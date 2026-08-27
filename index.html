@@ -79,27 +79,6 @@
       box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
     }
 
-    #viewToggle {
-      position: absolute;
-      top: 68px;
-      right: 22px;
-      padding: 9px 13px;
-      border: 1px solid rgba(255, 255, 255, 0.62);
-      border-radius: 999px;
-      background: rgba(25, 92, 61, 0.55);
-      color: #fff;
-      cursor: pointer;
-      pointer-events: auto;
-      font: inherit;
-      font-size: 0.78rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    }
-
-    #viewToggle:active {
-      transform: translateY(1px);
-    }
 
     #startScreen {
       position: fixed;
@@ -230,11 +209,6 @@
         left: 16px;
       }
 
-      #viewToggle {
-        top: 52px;
-        right: 16px;
-      }
-
       #touchControls {
         display: block;
       }
@@ -250,9 +224,8 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">5</p>
+    <p class="title">6</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
-    <button id="viewToggle" type="button">PRIMA PERSONA</button>
     <div class="crosshair"></div>
   </div>
 
@@ -280,7 +253,6 @@
     const joystick = document.getElementById("joystick");
     const joystickKnob = document.getElementById("joystickKnob");
     const lookArea = document.getElementById("lookArea");
-    const viewToggle = document.getElementById("viewToggle");
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x83c9f4);
@@ -621,9 +593,11 @@
       group.updateMatrixWorld(true);
       const bodyBottom = baseY + foundationTop;
       const bodyTop = bodyBottom + wallHeight;
+      const roofTop = bodyTop + 0.34;
+      const hitboxTop = roofTop + 0.08;
       group.userData.hitbox = new THREE.Box3(
         new THREE.Vector3(x - width * 0.5, bodyBottom, z - depth * 0.5),
-        new THREE.Vector3(x + width * 0.5, bodyTop, z + depth * 0.5)
+        new THREE.Vector3(x + width * 0.5, hitboxTop, z + depth * 0.5)
       );
       return group;
     }
@@ -877,7 +851,9 @@
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();
 
-    // La hitbox resta attiva per collisioni e rimbalzi, ma non viene più visualizzata.
+    // Si gioca sempre in prima persona: il modello resta nascosto,
+    // mentre la hitbox continua a gestire collisioni e rimbalzi.
+    flyer.visible = false;
     scene.add(flyer);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
@@ -920,7 +896,6 @@
     let previousLookX = 0;
     let previousLookY = 0;
     let mouseLookPointer = null;
-    let firstPerson = false;
 
     function requestPointerLockSafely() {
       if (!matchMedia("(pointer: fine)").matches || document.pointerLockElement === renderer.domElement) {
@@ -947,12 +922,6 @@
       startScreen.classList.add("hidden");
       enterImmersiveMode();
     }
-
-    viewToggle.addEventListener("click", () => {
-      firstPerson = !firstPerson;
-      flyer.visible = !firstPerson;
-      viewToggle.textContent = firstPerson ? "TERZA PERSONA" : "PRIMA PERSONA";
-    });
 
     startButton.addEventListener("click", beginGame);
     renderer.domElement.addEventListener("click", () => {
@@ -1176,13 +1145,15 @@
       if (keys.has("arrowup")) pitchInput += 1;
       if (keys.has("arrowdown")) pitchInput -= 1;
 
-      // Il joystick mobile resta un comando binario di avanzamento.
+      // Joystick mobile: avanti accelera, indietro oltre metà raggio
+      // disattiva l'acceleratore e attiva lo sparo da fermo.
+      const joystickShooting = joystickPointer !== null && mobileMove.y > 0.5;
       if (joystickPointer !== null) {
-        throttle = 1;
+        throttle = joystickShooting ? 0 : 1;
       }
 
       shotCooldown = Math.max(0, shotCooldown - delta);
-      const stickShooting = joystickPointer !== null && mobileMove.y < -0.5;
+      const stickShooting = joystickShooting;
       if ((stickShooting || keys.has(" ")) && shotCooldown <= 0) {
         shootProjectile();
         shotCooldown = 0.18;
@@ -1261,20 +1232,10 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        if (firstPerson) {
-          // Prima persona: il modello viene nascosto, ma la hitbox resta attiva.
-          // La camera coincide con il centro della sfera e usa quindi la sua hitbox.
-          camera.position.copy(flyer.position);
-          cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 8);
-          cameraLookTarget.y += 0.1;
-        } else {
-          // Terza persona: comportamento normale con il drone visibile.
-          cameraPosition.set(0, 2.1, 5.8).applyQuaternion(flyer.quaternion);
-          cameraPosition.add(flyer.position);
-          cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.8);
-          cameraLookTarget.y += 0.25;
-          camera.position.lerp(cameraPosition, Math.min(1, delta * 8));
-        }
+        // Prima persona fissa: la camera coincide con il centro della sfera.
+        camera.position.copy(flyer.position);
+        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 8);
+        cameraLookTarget.y += 0.1;
         camera.lookAt(cameraLookTarget);
       }
 

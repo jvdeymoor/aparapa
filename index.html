@@ -813,7 +813,8 @@
     }
 
     flyer = createFlyingVehicle();
-    flyer.position.set(0, heightAt(0, 8) + 16, 8);
+    // Spawn iniziale in un corridoio libero tra i primi grattacieli.
+    flyer.position.set(-5, heightAt(-5, -5) + 16, -5);
     flyer.userData.hitbox = new THREE.Box3();
     flyer.visible = false;
     scene.add(flyer);

@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">10</p>
+    <p class="title">11</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -929,15 +929,20 @@
       return best || { x: -112, y: heightAt(-112, -112) + 110, z: -112 };
     }
 
-    flyer = createDrone();
+    // Il drone giocabile è un controller invisibile: conserva posizione, rotazione,
+    // hitbox e fisica, senza trascinare con sé il modello estetico.
+    flyer = new THREE.Group();
     const safeSpawn = findSafeSpawn();
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();
-
-    // Il modello resta visibile davanti alla camera per poterlo vedere in gioco;
-    // la hitbox fisica continua a usare il nucleo sferico del drone.
-    flyer.visible = true;
     scene.add(flyer);
+
+    // Modello statico di osservazione: nasce davanti alla camera iniziale
+    // e resta fermo nel mondo mentre il drone gli ruota e vola attorno.
+    const droneModel = createDrone();
+    droneModel.position.copy(flyer.position);
+    droneModel.rotation.y = yaw;
+    scene.add(droneModel);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
 
@@ -1315,8 +1320,8 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // Il drone è appena davanti alla camera, così il modello resta visibile
-        // durante il volo senza cambiare la sua posizione o la sua hitbox.
+        // La camera segue il drone giocabile; il modello statico resta nel mondo
+        // e può essere osservato volandogli e ruotandogli attorno.
         cameraPosition.set(0, 0.42, 1.15).applyQuaternion(flyer.quaternion);
         cameraPosition.add(flyer.position);
         cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.4);

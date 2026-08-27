@@ -74,3 +74,49 @@ Per continuare il lavoro, indicare chiaramente:
 > Modifica direttamente il repository `jvdeymoor/progetto27`, aggiorna `index.html` e salva su `main`.
 
 Nelle attività Codex supportate il plugin può essere selezionato da `Sources` → `Use plugins` → `GitHub`, oppure richiamato con `@GitHub`. Le modifiche al repository possono richiedere una conferma.
+
+
+## ULTIMI AGGIORNAMENTI
+
+Aggiornato il 2026-08-28 dopo la revisione completa della chat. Questa sezione raccoglie le regole e le decisioni più recenti, che hanno precedenza sulle descrizioni più vecchie presenti sopra quando sono in conflitto.
+
+### Controlli e comportamento del drone
+
+- Le frecce non servono per ruotare il drone e non devono essere presentate come controlli. Su PC l’unico tasto di movimento è **W** per accelerare; il click sinistro spara. Il mouse controlla la visuale tramite pointer lock quando disponibile; **Esc** libera il mouse. Gli altri tasti non fanno nulla.
+- Su mobile il joystick serve per accelerare; spingendolo verso l’alto si spara mentre si accelera, tirandolo verso il basso si spara da fermo. Tutte le rotazioni e il controllo della visuale avvengono con swipe della mano destra sullo schermo.
+- I controlli mobile devono sparire sugli schermi grandi; il riferimento attuale è la media CSS `(pointer: coarse) and (max-width: 900px)`.
+- Non modificare il movimento, la fisica o gli hitbox del player senza una richiesta esplicita. La propulsione di verifica richiesta nella chat appartiene esclusivamente al modello 3D decorativo, non al player.
+- Non aggiungere testi di istruzioni come “premi”, “vola” o “swipe” nella scena/HUD. Il titolo “Il mio mondo” in alto è stato rimosso; deve restare solo il contatore.
+
+### Modello 3D DRONE_v1
+
+- `DRONE_v1.glb` viene caricato dalla cartella locale `/home/f/Documents/Codex/progetto27` per l’analisi e dall’asset `./DRONE_v1.glb` nel sito. È un modello decorativo separato: non è il modello del player e non deve essere usato come sua hitbox o controller.
+- A inizio partita il modello viene piazzato circa un metro davanti alla camera/player.
+- Il punto zero/rotazione predefinita dello spawn usa **+90° sull’asse X** (non -90°), mantenendo l’allineamento Y già presente nel codice.
+- Per la verifica visiva, la propulsione costante è applicata soltanto al modello DRONE_v1. L’ultima direzione impostata è l’asse globale X positivo: `decorativeDroneDirection.set(1, 0, 0)`, con velocità `1.8`. Il player deve rimanere fermo senza input.
+- Se viene cambiato l’orientamento del modello, verificare sempre che punta, asse di traslazione e direzione di volo coincidano; non correggere il problema spostando la propulsione sul player.
+
+### Città, terreno e hitbox
+
+- La zona di gioco è un blocco centrale urbano con terreno piatto, circondato da una cintura senza edifici in cui il terreno sale e diventa montagnoso/variegato. Un grande limite invisibile chiude l’area giocabile.
+- La generazione procedurale è stata riscritta e la città può contenere al massimo **400 edifici**; l’ultima richiesta di 400 sostituisce il precedente limite di 300.
+- Gli edifici devono essere semplici e diversi tra loro, costruiti con una mesh condivisa e computazionalmente leggera: parallelepipedi con finte finestre/architettura aliena, scanalature verticali, nicchie scavate e anelli/rientranze verso l’interno. Evitare anelli o dettagli che sporgono e possono creare intersezioni.
+- Ogni hitbox di edificio deve essere sempre un parallelepipedo AABB aderente alla parte visibile della torre/muro. Non deve includere podio, fondamenta o volume extra; il drone non può scendere al livello del podio.
+- Il terreno deve essere sempre presente. La zona centrale resta piatta, mentre la cintura esterna usa rilievi montagnosi e colori/varietà coerenti.
+- Mantenere le ombre a risoluzione contenuta e privilegiare la semplicità delle mesh, il riuso delle geometrie e il limite ai laser attivi.
+
+### Proiettili e prestazioni
+
+- I laser devono andare dritti nella direzione di sparo, avere una durata limitata e scaricarsi automaticamente.
+- Il sistema usa pooling, geometria/materiale riutilizzati e un limite agli elementi attivi; evitare di creare e distruggere continuamente mesh durante il gioco.
+- Per la pagina Three.js, usare un import map coerente per `three` e `three/addons/`; il precedente import diretto del loader con lo specifier bare `three` bloccava il caricamento della pagina.
+
+### Contatore e abitudini di lavoro
+
+- Il contatore visibile è un contatore di revisione del progetto, non un valore di gameplay. Dopo l’ultima modifica al progetto il valore corrente è **23**.
+- Incrementare sempre il contatore a ogni modifica pubblicata al codice del progetto e aggiornare sia il valore HTML iniziale sia `MODIFICATION_COUNT` in `index.html`.
+- Prima di chiudere una modifica: leggere/verificare il contenuto remoto su GitHub `main`, controllare la sintassi, verificare la pagina pubblicata e controllare che non compaiano errori JavaScript.
+- La fonte di verità resta il repository remoto GitHub `jvdeymoor/progetto27`; il lavoro sul codice va salvato direttamente su `main`. La copia locale serve per analisi o strumenti locali.
+- Quando GitHub Pages mostra ancora una versione precedente, considerare la propagazione/cache e usare un ricaricamento senza cache o un URL di verifica con query string.
+- Quando l’utente chiede una modifica al progetto, mantenere le regole sopra, aggiornare il contatore e non ripristinare comportamenti già esclusi senza una nuova richiesta esplicita.
+

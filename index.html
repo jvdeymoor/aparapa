@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">8</p>
+    <p class="title">9</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -867,7 +867,7 @@
           FLYING_MATERIALS.dark
         );
         barrel.rotation.x = Math.PI * 0.5;
-        barrel.position.set(side * 0.15, -0.11, -0.28);
+        barrel.position.set(side * 0.15, -0.11, -0.25);
         barrel.castShadow = true;
         group.add(barrel);
 
@@ -875,7 +875,7 @@
           new THREE.SphereGeometry(0.022, 8, 6),
           FLYING_MATERIALS.light
         );
-        muzzle.position.set(side * 0.15, -0.11, -0.345);
+        muzzle.position.set(side * 0.15, -0.11, -0.315);
         group.add(muzzle);
       }
 

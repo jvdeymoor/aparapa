@@ -203,6 +203,7 @@
 
   <script type="module">
     import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 
     const game = document.getElementById("game");
     const startScreen = document.getElementById("startScreen");
@@ -800,6 +801,41 @@
     let previousLookX = 0;
     let previousLookY = 0;
     let mouseLookPointer = null;
+    let decorativeDrone = null;
+    let decorativeDronePlaced = false;
+    const decorativeDroneAnchor = new THREE.Vector3();
+
+    function placeDecorativeDrone() {
+      if (!started || !decorativeDrone || decorativeDronePlaced) return;
+
+      decorativeDroneAnchor.set(0, 0.36, 0.98).applyQuaternion(flyer.quaternion);
+      decorativeDroneAnchor.add(flyer.position);
+      decorativeDroneAnchor.addScaledVector(flightDirection, 1);
+      decorativeDrone.position.copy(decorativeDroneAnchor);
+      decorativeDrone.quaternion.copy(flyer.quaternion);
+      decorativeDrone.rotateY(Math.PI * 0.5);
+      decorativeDrone.scale.setScalar(0.12);
+      decorativeDrone.visible = true;
+      decorativeDronePlaced = true;
+    }
+
+    const decorativeDroneLoader = new GLTFLoader();
+    decorativeDroneLoader.load(
+      "./DRONE_v1.glb",
+      gltf => {
+        decorativeDrone = gltf.scene;
+        decorativeDrone.visible = false;
+        decorativeDrone.traverse(object => {
+          if (!object.isMesh) return;
+          object.castShadow = true;
+          object.receiveShadow = true;
+        });
+        scene.add(decorativeDrone);
+        placeDecorativeDrone();
+      },
+      undefined,
+      error => console.error("Impossibile caricare DRONE_v1.glb", error)
+    );
 
     function requestPointerLockSafely() {
       if (!matchMedia("(pointer: fine)").matches || document.pointerLockElement === renderer.domElement) {
@@ -825,6 +861,7 @@
       started = true;
       startScreen.classList.add("hidden");
       enterImmersiveMode();
+      placeDecorativeDrone();
     }
 
     startButton.addEventListener("click", beginGame);

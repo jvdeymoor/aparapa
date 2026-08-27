@@ -74,4 +74,3 @@ Per continuare il lavoro, indicare chiaramente:
 > Modifica direttamente il repository `jvdeymoor/progetto27`, aggiorna `index.html` e salva su `main`.
 
 Nelle attività Codex supportate il plugin può essere selezionato da `Sources` → `Use plugins` → `GitHub`, oppure richiamato con `@GitHub`. Le modifiche al repository possono richiedere una conferma.
-

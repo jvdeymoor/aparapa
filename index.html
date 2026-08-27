@@ -250,7 +250,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">3</p>
+    <p class="title">4</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <button id="viewToggle" type="button">PRIMA PERSONA</button>
     <div class="crosshair"></div>
@@ -1261,19 +1261,21 @@
 
       if (flyer) {
         if (firstPerson) {
-          // Prima persona: la camera è appena dietro il sensore del drone.
-          cameraPosition.set(0, 0.08, -0.42).applyQuaternion(flyer.quaternion);
+          // Prima persona: la camera è davanti al corpo del drone e lo segue
+          // senza inerzia, così l'accelerazione non lo fa comparire nell'inquadratura.
+          cameraPosition.set(0, 0.1, -0.58).applyQuaternion(flyer.quaternion);
           cameraPosition.add(flyer.position);
           cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 8);
-          cameraLookTarget.y += 0.08;
+          cameraLookTarget.y += 0.1;
+          camera.position.copy(cameraPosition);
         } else {
           // Terza persona: la camera resta arretrata e il drone è ben davanti.
           cameraPosition.set(0, 2.1, 5.8).applyQuaternion(flyer.quaternion);
           cameraPosition.add(flyer.position);
           cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.8);
           cameraLookTarget.y += 0.25;
+          camera.position.lerp(cameraPosition, Math.min(1, delta * 8));
         }
-        camera.position.lerp(cameraPosition, Math.min(1, delta * 8));
         camera.lookAt(cameraLookTarget);
       }
 

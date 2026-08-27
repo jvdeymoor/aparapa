@@ -339,6 +339,16 @@
       dark: new THREE.MeshStandardMaterial({ color: 0x182128, roughness: 0.72, metalness: 0.22 })
     };
 
+    // Le linee di debug sono indipendenti: i materiali dei palazzi restano sempre opachi.
+    for (const materialGroup of Object.values(BUILDING_MATERIALS)) {
+      const materials = Array.isArray(materialGroup) ? materialGroup : [materialGroup];
+      for (const material of materials) {
+        material.transparent = false;
+        material.opacity = 1;
+        material.depthWrite = true;
+      }
+    }
+
     function hash2D(x, z) {
       let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(TERRAIN.seed, 1442695041);
       h = Math.imul(h ^ (h >>> 13), 1274126177);

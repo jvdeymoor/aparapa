@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">14</p>
+    <p class="title">15</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -775,8 +775,8 @@
     function createDrone() {
       const group = new THREE.Group();
 
-      // Modello compatto ispirato a un drone sferico corazzato:
-      // nessun elemento supera il diametro della sfera (0,68 unità).
+      // Modello compatto a guscio sferico con ali meccaniche:
+      // l'ingombro massimo resta entro il diametro della sfera di riferimento.
       const shell = new THREE.Mesh(
         new THREE.SphereGeometry(0.18, 24, 18),
         FLYING_MATERIALS.body
@@ -811,20 +811,22 @@
       function addWing(side) {
         const wingGeometry = new THREE.BufferGeometry();
         wingGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
-          side * 0.16, 0.08, 0.12,
-          side * 0.33, 0.055, 0.08,
-          side * 0.34, 0.025, -0.14,
-          side * 0.18, 0.04, -0.19
+          side * 0.12, 0.1, 0.14,
+          side * 0.2, 0.145, 0.16,
+          side * 0.34, 0.09, 0.08,
+          side * 0.33, 0.035, -0.14,
+          side * 0.25, 0.018, -0.22,
+          side * 0.13, 0.045, -0.16
         ], 3));
-        wingGeometry.setIndex([0, 1, 2, 0, 2, 3]);
+        wingGeometry.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5]);
         wingGeometry.computeVertexNormals();
 
         const wing = new THREE.Mesh(
           wingGeometry,
           new THREE.MeshStandardMaterial({
             color: 0x171d22,
-            roughness: 0.58,
-            metalness: 0.6,
+            roughness: 0.52,
+            metalness: 0.68,
             side: THREE.DoubleSide
           })
         );
@@ -832,11 +834,33 @@
         wing.receiveShadow = true;
         group.add(wing);
 
+        const panelGeometry = new THREE.BufferGeometry();
+        panelGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
+          side * 0.17, 0.154, 0.08,
+          side * 0.27, 0.115, 0.06,
+          side * 0.29, 0.07, -0.12,
+          side * 0.2, 0.08, -0.17
+        ], 3));
+        panelGeometry.setIndex([0, 1, 2, 0, 2, 3]);
+        panelGeometry.computeVertexNormals();
+
+        const panel = new THREE.Mesh(
+          panelGeometry,
+          new THREE.MeshStandardMaterial({
+            color: 0x303940,
+            roughness: 0.48,
+            metalness: 0.72,
+            side: THREE.DoubleSide
+          })
+        );
+        panel.castShadow = true;
+        group.add(panel);
+
         const wingEdge = new THREE.Mesh(
           new THREE.BoxGeometry(0.2, 0.018, 0.018),
           FLYING_MATERIALS.dark
         );
-        wingEdge.position.set(side * 0.24, 0.055, -0.055);
+        wingEdge.position.set(side * 0.24, 0.086, -0.055);
         wingEdge.rotation.y = side * 0.34;
         wingEdge.castShadow = true;
         group.add(wingEdge);
@@ -845,7 +869,7 @@
           new THREE.BoxGeometry(0.15, 0.009, 0.012),
           FLYING_MATERIALS.light
         );
-        wingLight.position.set(side * 0.245, 0.046, -0.07);
+        wingLight.position.set(side * 0.245, 0.076, -0.07);
         wingLight.rotation.y = side * 0.34;
         group.add(wingLight);
       }

@@ -2,6 +2,7 @@
 
 ## Progetto
 
+- Base principale del progetto: `/home/f/Documents/Codex/progetto27` (cartella da usare come riferimento operativo per il lavoro locale).
 - Repository GitHub: `jvdeymoor/progetto27`
 - Sito pubblicato: `https://jvdeymoor.github.io/progetto27/`
 - Branch e pubblicazione: `main`, cartella principale (`/(root)`) tramite GitHub Pages.
@@ -35,6 +36,15 @@
 La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset locali.
 
 Codex è ora collegato a Blender per poter lavorare direttamente sulle scene e visualizzare le modifiche nel viewport; Blender deve rimanere aperto durante questo tipo di lavoro.
+
+## Regole operative
+
+- **Fonte di verità:** per il progetto fa fede il contenuto remoto del repository GitHub `jvdeymoor/progetto27`, sul branch `main`. La copia locale non sostituisce GitHub.
+- **Aggiornamento dell’handoff:** modificare `HANDOFF.md` solo quando l’utente lo chiede esplicitamente. Ogni aggiornamento deve essere applicato prima all’handoff remoto su GitHub e poi replicato nell’handoff locale, mantenendo i due file identici.
+- **Lavoro sul progetto e working tree:** file, modifiche, commit, pubblicazione e controllo dello stato del progetto si gestiscono direttamente su GitHub; non trattare la cartella locale come working tree o fonte di verità del progetto.
+- **Uso del percorso locale:** quando serve un percorso locale per analisi, test o strumenti che richiedono file locali, usare esclusivamente `/home/f/Documents/Codex/progetto27`, indicato nell’handoff locale. Dopo il lavoro, la versione di riferimento resta quella remota su GitHub.
+- **Connessione a GitHub:** usare il connettore/plugin GitHub per leggere il repository `jvdeymoor/progetto27`, verificare il branch `main`, leggere i file remoti e controllare l’ultimo commit prima di operare. Per modifiche al repository usare le operazioni GitHub autorizzate e verificare il risultato remoto.
+- **Controllo del bridge Blender:** Blender deve essere aperto. Verificare il collegamento con `blender_ping`, quindi controllare versione e scena con `blender_version` e `blender_scene_info`. Quando serve un controllo operativo, usare anche `blender_exec_python` in sola lettura e/o `blender_capture_viewport`; riportare chiaramente eventuali errori o se è caricata la scena predefinita invece della scena del progetto.
 
 ## Ultima modifica
 

@@ -250,7 +250,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">4</p>
+    <p class="title">5</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <button id="viewToggle" type="button">PRIMA PERSONA</button>
     <div class="crosshair"></div>
@@ -950,6 +950,7 @@
 
     viewToggle.addEventListener("click", () => {
       firstPerson = !firstPerson;
+      flyer.visible = !firstPerson;
       viewToggle.textContent = firstPerson ? "TERZA PERSONA" : "PRIMA PERSONA";
     });
 
@@ -1261,15 +1262,13 @@
 
       if (flyer) {
         if (firstPerson) {
-          // Prima persona: la camera è davanti al corpo del drone e lo segue
-          // senza inerzia, così l'accelerazione non lo fa comparire nell'inquadratura.
-          cameraPosition.set(0, 0.1, -0.58).applyQuaternion(flyer.quaternion);
-          cameraPosition.add(flyer.position);
+          // Prima persona: il modello viene nascosto, ma la hitbox resta attiva.
+          // La camera coincide con il centro della sfera e usa quindi la sua hitbox.
+          camera.position.copy(flyer.position);
           cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 8);
           cameraLookTarget.y += 0.1;
-          camera.position.copy(cameraPosition);
         } else {
-          // Terza persona: la camera resta arretrata e il drone è ben davanti.
+          // Terza persona: comportamento normale con il drone visibile.
           cameraPosition.set(0, 2.1, 5.8).applyQuaternion(flyer.quaternion);
           cameraPosition.add(flyer.position);
           cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.8);

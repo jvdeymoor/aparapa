@@ -311,7 +311,7 @@
     const terrainChunks = new Map();
     const structureChunks = new Map();
     const buildingHitboxes = new Map();
-    const flyerHitboxSize = new THREE.Vector3(1.0, 0.8, 2.1);
+    const flyerHitboxRadius = 0.38;
     const projectiles = [];
     let shotCooldown = 0;
     let flyer = null;
@@ -812,7 +812,8 @@
       beacon.position.set(0, 0.18, -1.38);
       group.add(beacon);
 
-      group.scale.setScalar(0.62);
+      // Dimensione complessiva circa quella di un pallone da calcio.
+      group.scale.setScalar(0.18);
       return group;
     }
 
@@ -829,7 +830,7 @@
     }
 
     function findSafeSpawn() {
-      const probe = new THREE.Box3();
+      const probe = new THREE.Sphere();
       const center = new THREE.Vector3();
       let best = null;
       let bestClearance = -Infinity;
@@ -839,7 +840,7 @@
         for (let z = -112; z <= 112; z += 8) {
           const y = heightAt(x, z) + 110;
           center.set(x, y, z);
-          probe.setFromCenterAndSize(center, flyerHitboxSize);
+          probe.set(center, flyerHitboxRadius);
           let blocked = false;
           for (const hitboxes of buildingHitboxes.values()) {
             for (const hitbox of hitboxes) {
@@ -865,7 +866,7 @@
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     // Spawn iniziale in un corridoio libero tra i primi grattacieli.
     flyer.position.set(-5, heightAt(-5, -5) + 16, -5);
-    flyer.userData.hitbox = new THREE.Box3();
+    flyer.userData.hitbox = new THREE.Sphere();
     flyer.visible = false;
     scene.add(flyer);
 
@@ -1094,7 +1095,7 @@
 
     function updateFlyerHitbox() {
       if (!flyer?.userData.hitbox) return;
-      flyer.userData.hitbox.setFromCenterAndSize(flyer.position, flyerHitboxSize);
+      flyer.userData.hitbox.set(flyer.position, flyerHitboxRadius);
     }
 
     function flyerHitsBuilding() {

@@ -30,7 +30,7 @@ La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset lo
 
 ## Ultima modifica
 
-Il commit `666c77d7b7136af16a4d1d57ebe2092231246244` aggiunge il generatore procedurale di terreno in `index.html`. Il codice è stato controllato sintatticamente e salvato direttamente su `main`.
+I commit `666c77d7b7136af16a4d1d57ebe2092231246244` e `64f711a57d554076b1986238a48e3d1533956239` aggiungono il generatore procedurale di terreno in `index.html` e correggono l’orientamento dei triangoli della mesh. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
 
 ## Prossimi sviluppi possibili
 

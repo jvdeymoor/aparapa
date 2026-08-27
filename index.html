@@ -237,7 +237,7 @@
   <div id="touchControls" aria-hidden="true">
     <div id="joystick"><div id="joystickKnob"></div></div>
     <div id="lookArea"></div>
-    <span class="touch-label left">premi = vola</span>
+    <span class="touch-label left">premi = vola · su = spara</span>
     <span class="touch-label right">swipe / guarda</span>
   </div>
 
@@ -311,6 +311,9 @@
     const terrainChunks = new Map();
     const structureChunks = new Map();
     const buildingHitboxes = new Map();
+    const flyerHitboxSize = new THREE.Vector3(1.0, 0.8, 2.1);
+    const projectiles = [];
+    let shotCooldown = 0;
     let flyer = null;
     const BUILDING_MATERIALS = {
       facades: [
@@ -809,10 +812,57 @@
       beacon.position.set(0, 0.18, -1.38);
       group.add(beacon);
 
+      group.scale.setScalar(0.62);
       return group;
     }
 
+    function spawnClearance(x, z) {
+      let nearest = Infinity;
+      for (const hitboxes of buildingHitboxes.values()) {
+        for (const hitbox of hitboxes) {
+          const dx = x < hitbox.min.x ? hitbox.min.x - x : x > hitbox.max.x ? x - hitbox.max.x : 0;
+          const dz = z < hitbox.min.z ? hitbox.min.z - z : z > hitbox.max.z ? z - hitbox.max.z : 0;
+          nearest = Math.min(nearest, Math.hypot(dx, dz));
+        }
+      }
+      return nearest;
+    }
+
+    function findSafeSpawn() {
+      const probe = new THREE.Box3();
+      const center = new THREE.Vector3();
+      let best = null;
+      let bestClearance = -Infinity;
+
+      // Cerca in tutta la zona già caricata, scegliendo il punto più lontano dagli edifici.
+      for (let x = -112; x <= 112; x += 8) {
+        for (let z = -112; z <= 112; z += 8) {
+          const y = heightAt(x, z) + 18;
+          center.set(x, y, z);
+          probe.setFromCenterAndSize(center, flyerHitboxSize);
+          let blocked = false;
+          for (const hitboxes of buildingHitboxes.values()) {
+            for (const hitbox of hitboxes) {
+              if (probe.intersectsBox(hitbox)) {
+                blocked = true;
+                break;
+              }
+            }
+            if (blocked) break;
+          }
+          if (!blocked && spawnClearance(x, z) > bestClearance) {
+            bestClearance = spawnClearance(x, z);
+            best = { x, y, z };
+          }
+        }
+      }
+
+      return best || { x: -112, y: heightAt(-112, -112) + 32, z: -112 };
+    }
+
     flyer = createFlyingVehicle();
+    const safeSpawn = findSafeSpawn();
+    flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     // Spawn iniziale in un corridoio libero tra i primi grattacieli.
     flyer.position.set(-5, heightAt(-5, -5) + 16, -5);
     flyer.userData.hitbox = new THREE.Box3();
@@ -849,7 +899,6 @@
     const cameraPosition = new THREE.Vector3();
     const cameraLookTarget = new THREE.Vector3();
     const flightDirection = new THREE.Vector3(0, 0, -1);
-    const flyerHitboxSize = new THREE.Vector3(2.2, 2.0, 4.8);
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
@@ -994,6 +1043,55 @@
     lookArea.addEventListener("pointerup", stopLooking);
     lookArea.addEventListener("pointercancel", stopLooking);
 
+    function shootProjectile() {
+      if (!flyer) return;
+
+      const shot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffd45c })
+      );
+      shot.position.copy(flyer.position).addScaledVector(flightDirection, 1.35);
+      shot.position.y += 0.1;
+      scene.add(shot);
+
+      projectiles.push({
+        mesh: shot,
+        velocity: flightDirection.clone().multiplyScalar(42),
+        life: 2.2,
+        hitbox: new THREE.Box3()
+      });
+    }
+
+    function updateProjectiles(delta) {
+      for (let index = projectiles.length - 1; index >= 0; index--) {
+        const projectile = projectiles[index];
+        projectile.life -= delta;
+        projectile.mesh.position.addScaledVector(projectile.velocity, delta);
+        projectile.hitbox.setFromCenterAndSize(
+          projectile.mesh.position,
+          new THREE.Vector3(0.24, 0.24, 0.24)
+        );
+
+        let hitBuilding = false;
+        for (const hitboxes of buildingHitboxes.values()) {
+          for (const hitbox of hitboxes) {
+            if (projectile.hitbox.intersectsBox(hitbox)) {
+              hitBuilding = true;
+              break;
+            }
+          }
+          if (hitBuilding) break;
+        }
+
+        if (projectile.life <= 0 || hitBuilding) {
+          scene.remove(projectile.mesh);
+          projectile.mesh.geometry.dispose();
+          projectile.mesh.material.dispose();
+          projectiles.splice(index, 1);
+        }
+      }
+    }
+
     function updateFlyerHitbox() {
       if (!flyer?.userData.hitbox) return;
       flyer.userData.hitbox.setFromCenterAndSize(flyer.position, flyerHitboxSize);
@@ -1026,6 +1124,13 @@
       // Il joystick mobile resta un comando binario di avanzamento.
       if (joystickPointer !== null) {
         throttle = 1;
+      }
+
+      shotCooldown = Math.max(0, shotCooldown - delta);
+      const stickShooting = joystickPointer !== null && mobileMove.y < -0.5;
+      if ((stickShooting || keys.has(" ")) && shotCooldown <= 0) {
+        shootProjectile();
+        shotCooldown = 0.18;
       }
 
       yaw += turnInput * delta * 1.2;
@@ -1063,6 +1168,7 @@
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
       moveFlyer(delta);
+      updateProjectiles(delta);
 
       if (flyer) {
         // Prima persona: la camera è dentro il corpo del velivolo.

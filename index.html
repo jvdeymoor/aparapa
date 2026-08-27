@@ -237,7 +237,7 @@
   <div id="touchControls" aria-hidden="true">
     <div id="joystick"><div id="joystickKnob"></div></div>
     <div id="lookArea"></div>
-    <span class="touch-label left">vola</span>
+    <span class="touch-label left">premi = vola</span>
     <span class="touch-label right">swipe / guarda</span>
   </div>
 
@@ -984,13 +984,11 @@
       if (keys.has("arrowup")) pitchInput += 1;
       if (keys.has("arrowdown")) pitchInput -= 1;
 
-      // Tenere premuto il joystick fa avanzare il velivolo.
-      // La spinta verticale del joystick alza o abbassa il muso.
+      // Il joystick mobile è volutamente un comando binario:
+      // basta premerlo/tenerlo premuto per avanzare. La sua posizione
+      // non modifica per ora né il muso né la curva.
       if (joystickPointer !== null) {
-        const joystickForce = Math.min(1, Math.hypot(mobileMove.x, mobileMove.y));
-        throttle = 0.45 + joystickForce * 0.75;
-        turnInput = mobileMove.x;
-        pitchInput = -mobileMove.y;
+        throttle = 1;
       }
 
       yaw += turnInput * delta * 1.2;

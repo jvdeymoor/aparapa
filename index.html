@@ -309,6 +309,22 @@
       { name: "montagna", amplitude: 9.5, detail: 1.8, ridge: 3.7, grass: 0x668a60 }
     ];
     const terrainChunks = new Map();
+    const structureChunks = new Map();
+    const BUILDING_MATERIALS = {
+      walls: [
+        new THREE.MeshStandardMaterial({ color: 0xcaa56a, roughness: 1 }),
+        new THREE.MeshStandardMaterial({ color: 0xb9784d, roughness: 1 }),
+        new THREE.MeshStandardMaterial({ color: 0xa8a08b, roughness: 1 })
+      ],
+      roofs: [
+        new THREE.MeshStandardMaterial({ color: 0x714034, roughness: 1 }),
+        new THREE.MeshStandardMaterial({ color: 0x4e5e68, roughness: 1 }),
+        new THREE.MeshStandardMaterial({ color: 0x8b552e, roughness: 1 })
+      ],
+      stone: new THREE.MeshStandardMaterial({ color: 0x777871, roughness: 1 }),
+      dark: new THREE.MeshStandardMaterial({ color: 0x26343a, roughness: 1 }),
+      dirt: new THREE.MeshStandardMaterial({ color: 0x755034, roughness: 1 })
+    };
 
     function hash2D(x, z) {
       let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(TERRAIN.seed, 1442695041);
@@ -423,6 +439,202 @@
       return color;
     }
 
+    function seededRandom(chunkX, chunkZ, slot) {
+      return hash2D(
+        chunkX * 97 + slot * 31 + 13,
+        chunkZ * 89 - slot * 47 - 7
+      );
+    }
+
+    function groundVariation(x, z, width, depth) {
+      const samples = [
+        heightAt(x - width * 0.45, z - depth * 0.45),
+        heightAt(x + width * 0.45, z - depth * 0.45),
+        heightAt(x - width * 0.45, z + depth * 0.45),
+        heightAt(x + width * 0.45, z + depth * 0.45)
+      ];
+      return Math.max(...samples) - Math.min(...samples);
+    }
+
+    function addHouseDetails(group, width, wallHeight, depth) {
+      const door = new THREE.Mesh(
+        new THREE.BoxGeometry(width * 0.18, 1.05, 0.08),
+        BUILDING_MATERIALS.dark
+      );
+      door.position.set(0, 0.78, depth * 0.5 + 0.05);
+      group.add(door);
+
+      const windowMaterial = BUILDING_MATERIALS.dark;
+      for (const side of [-1, 1]) {
+        const window = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.2, 0.55, 0.08),
+          windowMaterial
+        );
+        window.position.set(side * width * 0.27, wallHeight * 0.58, depth * 0.5 + 0.05);
+        group.add(window);
+      }
+    }
+
+    function createBuilding(x, z, kind, scale, wallIndex, roofIndex) {
+      const group = new THREE.Group();
+      const baseY = heightAt(x, z);
+      const wallMaterial = BUILDING_MATERIALS.walls[wallIndex];
+      const roofMaterial = BUILDING_MATERIALS.roofs[roofIndex];
+
+      let width;
+      let depth;
+      let wallHeight;
+      if (kind === 0) {
+        width = (5.5 + scale * 2.2);
+        depth = (5 + scale * 2.4);
+        wallHeight = 2.4 + scale * 1.1;
+      } else if (kind === 1) {
+        width = (7 + scale * 3.4);
+        depth = (6 + scale * 3.8);
+        wallHeight = 3.6 + scale * 1.7;
+      } else if (kind === 2) {
+        width = 4.2 + scale * 1.8;
+        depth = 4.2 + scale * 1.8;
+        wallHeight = 8 + scale * 5.5;
+      } else {
+        width = 7 + scale * 3;
+        depth = 6 + scale * 2.5;
+        wallHeight = 2.2 + scale * 1.2;
+      }
+
+      const foundation = new THREE.Mesh(
+        new THREE.BoxGeometry(width + 0.35, 0.28, depth + 0.35),
+        BUILDING_MATERIALS.stone
+      );
+      foundation.position.y = 0.14;
+      foundation.castShadow = true;
+      foundation.receiveShadow = true;
+      group.add(foundation);
+
+      if (kind < 2) {
+        const walls = new THREE.Mesh(
+          new THREE.BoxGeometry(width, wallHeight, depth),
+          wallMaterial
+        );
+        walls.position.y = 0.28 + wallHeight * 0.5;
+        walls.castShadow = true;
+        walls.receiveShadow = true;
+        group.add(walls);
+
+        const roofHeight = kind === 0 ? 2.1 : 2.8;
+        const roof = new THREE.Mesh(
+          new THREE.ConeGeometry(Math.max(width, depth) * 0.72, roofHeight, 4),
+          roofMaterial
+        );
+        roof.position.y = 0.28 + wallHeight + roofHeight * 0.5;
+        roof.rotation.y = Math.PI * 0.25;
+        roof.castShadow = true;
+        group.add(roof);
+        addHouseDetails(group, width, wallHeight, depth);
+      } else if (kind === 2) {
+        const tower = new THREE.Mesh(
+          new THREE.BoxGeometry(width, wallHeight, depth),
+          wallMaterial
+        );
+        tower.position.y = 0.28 + wallHeight * 0.5;
+        tower.castShadow = true;
+        tower.receiveShadow = true;
+        group.add(tower);
+
+        const roof = new THREE.Mesh(
+          new THREE.ConeGeometry(Math.max(width, depth) * 0.8, 2.6, 4),
+          roofMaterial
+        );
+        roof.position.y = 0.28 + wallHeight + 1.3;
+        roof.rotation.y = Math.PI * 0.25;
+        roof.castShadow = true;
+        group.add(roof);
+      } else {
+        const wallThickness = 0.42;
+        const walls = [
+          [width, wallThickness, depth, 0, wallHeight * 0.5, -depth * 0.5],
+          [width, wallThickness, depth, 0, wallHeight * 0.5, depth * 0.5],
+          [wallThickness, wallHeight, depth, -width * 0.5, wallHeight * 0.5, 0],
+          [wallThickness, wallHeight, depth, width * 0.5, wallHeight * 0.5, 0]
+        ];
+        for (let index = 0; index < walls.length; index++) {
+          if (index === 2 && scale < 0.55) continue;
+          const [sizeX, sizeY, sizeZ, px, py, pz] = walls[index];
+          const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(sizeX, sizeY, sizeZ),
+            index % 2 === 0 ? BUILDING_MATERIALS.dirt : wallMaterial
+          );
+          wall.position.set(px, 0.28 + py, pz);
+          wall.castShadow = true;
+          wall.receiveShadow = true;
+          group.add(wall);
+        }
+
+        for (let index = 0; index < 3; index++) {
+          const rubble = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.35 + scale * 0.18, 0),
+            BUILDING_MATERIALS.stone
+          );
+          rubble.position.set(
+            (seededRandom(x, z, index + 21) - 0.5) * width * 0.7,
+            0.6,
+            (seededRandom(x, z, index + 31) - 0.5) * depth * 0.7
+          );
+          rubble.scale.y = 0.65;
+          rubble.castShadow = true;
+          group.add(rubble);
+        }
+      }
+
+      group.position.set(x, baseY, z);
+      return group;
+    }
+
+    function createStructuresChunk(chunkX, chunkZ) {
+      const group = new THREE.Group();
+      const count = 1 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 4);
+
+      for (let index = 0; index < count; index++) {
+        let placed = false;
+        for (let attempt = 0; attempt < 8 && !placed; attempt++) {
+          const slot = index * 11 + attempt + 1;
+          const localX = 8 + seededRandom(chunkX, chunkZ, slot) * 48;
+          const localZ = 8 + seededRandom(chunkX, chunkZ, slot + 1) * 48;
+          if (Math.abs(localX - 32) < 10 && Math.abs(localZ - 32) < 10) continue;
+
+          const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
+          const scale = 0.65 + seededRandom(chunkX, chunkZ, slot + 3) * 0.75;
+          const width = kind === 2 ? 5 + scale * 2 : 8 + scale * 4;
+          const depth = kind === 2 ? 5 + scale * 2 : 7 + scale * 4;
+          const worldX = chunkX * TERRAIN.chunkSize + localX;
+          const worldZ = chunkZ * TERRAIN.chunkSize + localZ;
+
+          // Evita di far galleggiare gli edifici sui pendii troppo inclinati.
+          if (groundVariation(worldX, worldZ, width, depth) > 1.2) continue;
+
+          const building = createBuilding(
+            worldX,
+            worldZ,
+            kind,
+            scale,
+            Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.walls.length),
+            Math.floor(seededRandom(chunkX, chunkZ, slot + 5) * BUILDING_MATERIALS.roofs.length)
+          );
+          group.add(building);
+          placed = true;
+        }
+      }
+
+      scene.add(group);
+      return group;
+    }
+
+    function disposeStructureGroup(group) {
+      group.traverse(object => {
+        if (object.isMesh) object.geometry.dispose();
+      });
+    }
+
     function createTerrainChunk(chunkX, chunkZ) {
       const size = TERRAIN.chunkSize;
       const segments = TERRAIN.segments;
@@ -499,6 +711,9 @@
           if (!terrainChunks.has(key)) {
             terrainChunks.set(key, createTerrainChunk(chunkX, chunkZ));
           }
+          if (!structureChunks.has(key)) {
+            structureChunks.set(key, createStructuresChunk(chunkX, chunkZ));
+          }
         }
       }
 
@@ -508,6 +723,14 @@
           mesh.geometry.dispose();
           mesh.material.dispose();
           terrainChunks.delete(key);
+        }
+      }
+
+      for (const [key, group] of structureChunks) {
+        if (!needed.has(key)) {
+          scene.remove(group);
+          disposeStructureGroup(group);
+          structureChunks.delete(key);
         }
       }
     }

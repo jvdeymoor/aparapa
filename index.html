@@ -238,7 +238,7 @@
   <section id="startScreen">
     <div class="start-card">
       <h1>Benvenuto nel mondo</h1>
-      <p>Una pianura tranquilla, cielo azzurro e prato verde.<br>Entra e fai un giro.</p>
+      <p>Colline, prati e rocce generate in tempo reale.<br>Entra ed esplora il terreno.</p>
       <button id="startButton" type="button">INIZIA</button>
     </div>
   </section>
@@ -283,30 +283,174 @@
     sun.shadow.camera.far = 150;
     scene.add(sun);
 
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(240, 240),
-      new THREE.MeshStandardMaterial({ color: 0x4f9a48, roughness: 1 })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
+    // Terreno procedurale a chunk: l'altezza dipende sempre dalle coordinate globali.
+    // Questo mantiene i bordi dei quadranti coincidenti, come nel vecchio sistema Java,
+    // senza dover correggere manualmente le cuciture tra un quadrante e l'altro.
+    const TERRAIN = {
+      chunkSize: 64,
+      segments: 32,
+      loadRadius: 2,
+      maxHeight: 7.5,
+      seed: 270827
+    };
+    const terrainChunks = new Map();
 
-    const grass = new THREE.Mesh(
-      new THREE.PlaneGeometry(240, 240, 80, 80),
-      new THREE.MeshStandardMaterial({ color: 0x5ca94d, roughness: 1, metalness: 0 })
-    );
-    grass.rotation.x = -Math.PI / 2;
-    grass.position.y = 0.012;
-    grass.receiveShadow = true;
-    scene.add(grass);
+    function hash2D(x, z) {
+      let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(TERRAIN.seed, 1442695041);
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+    }
 
-    const horizon = new THREE.Mesh(
-      new THREE.RingGeometry(75, 118, 64),
-      new THREE.MeshBasicMaterial({ color: 0x39753a, side: THREE.DoubleSide })
-    );
-    horizon.rotation.x = -Math.PI / 2;
-    horizon.position.y = -0.02;
-    scene.add(horizon);
+    function smooth(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function valueNoise(x, z) {
+      const x0 = Math.floor(x);
+      const z0 = Math.floor(z);
+      const tx = smooth(x - x0);
+      const tz = smooth(z - z0);
+      const n00 = hash2D(x0, z0);
+      const n10 = hash2D(x0 + 1, z0);
+      const n01 = hash2D(x0, z0 + 1);
+      const n11 = hash2D(x0 + 1, z0 + 1);
+      return lerp(lerp(n00, n10, tx), lerp(n01, n11, tx), tz);
+    }
+
+    function fractalNoise(x, z, octaves = 5) {
+      let sum = 0;
+      let amplitude = 1;
+      let frequency = 1;
+      let weight = 0;
+      for (let octave = 0; octave < octaves; octave++) {
+        sum += valueNoise(x * frequency, z * frequency) * amplitude;
+        weight += amplitude;
+        amplitude *= 0.5;
+        frequency *= 2;
+      }
+      return sum / weight;
+    }
+
+    function heightAt(x, z) {
+      const broad = fractalNoise(x * 0.012, z * 0.012, 5);
+      const detail = fractalNoise(x * 0.045 + 17.3, z * 0.045 - 9.1, 4);
+      const ridgeNoise = fractalNoise(x * 0.02 - 41.7, z * 0.02 + 28.4, 4);
+      const ridge = 1 - Math.abs(ridgeNoise * 2 - 1);
+      return (broad - 0.5) * TERRAIN.maxHeight
+        + (detail - 0.5) * 1.65
+        + (ridge - 0.5) * 1.25;
+    }
+
+    function terrainColor(height, slope, x, z) {
+      const color = new THREE.Color();
+      const variation = (valueNoise(x * 0.08, z * 0.08) - 0.5) * 0.08;
+      if (height < -2.2) {
+        color.setRGB(0.72 + variation, 0.62 + variation, 0.35 + variation);
+      } else if (slope > 1.55 || height > 4.6) {
+        color.setRGB(0.38 + variation, 0.39 + variation, 0.37 + variation);
+      } else if (height > 2.7) {
+        color.setRGB(0.50 + variation, 0.52 + variation, 0.30 + variation);
+      } else {
+        color.setRGB(0.20 + variation, 0.48 + variation, 0.20 + variation);
+      }
+      return color;
+    }
+
+    function createTerrainChunk(chunkX, chunkZ) {
+      const size = TERRAIN.chunkSize;
+      const segments = TERRAIN.segments;
+      const half = size * 0.5;
+      const worldOriginX = chunkX * size + half;
+      const worldOriginZ = chunkZ * size + half;
+      const positions = [];
+      const colors = [];
+      const indices = [];
+      const step = size / segments;
+
+      for (let row = 0; row <= segments; row++) {
+        for (let column = 0; column <= segments; column++) {
+          const localX = -half + column * step;
+          const localZ = -half + row * step;
+          const worldX = worldOriginX + localX;
+          const worldZ = worldOriginZ + localZ;
+          const height = heightAt(worldX, worldZ);
+          const slope = Math.max(
+            Math.abs(heightAt(worldX + 1, worldZ) - heightAt(worldX - 1, worldZ)),
+            Math.abs(heightAt(worldX, worldZ + 1) - heightAt(worldX, worldZ - 1))
+          );
+          const color = terrainColor(height, slope, worldX, worldZ);
+          positions.push(localX, height, localZ);
+          colors.push(color.r, color.g, color.b);
+        }
+      }
+
+      for (let row = 0; row < segments; row++) {
+        for (let column = 0; column < segments; column++) {
+          const a = row * (segments + 1) + column;
+          const b = a + 1;
+          const d = (row + 1) * (segments + 1) + column;
+          const c = d + 1;
+          indices.push(a, b, d, b, c, d);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 1,
+          metalness: 0
+        })
+      );
+      mesh.position.set(worldOriginX, 0, worldOriginZ);
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+      return mesh;
+    }
+
+    function chunkKey(chunkX, chunkZ) {
+      return chunkX + "," + chunkZ;
+    }
+
+    function syncTerrainChunks() {
+      const centerX = Math.floor(camera.position.x / TERRAIN.chunkSize);
+      const centerZ = Math.floor(camera.position.z / TERRAIN.chunkSize);
+      const needed = new Set();
+
+      for (let dz = -TERRAIN.loadRadius; dz <= TERRAIN.loadRadius; dz++) {
+        for (let dx = -TERRAIN.loadRadius; dx <= TERRAIN.loadRadius; dx++) {
+          const chunkX = centerX + dx;
+          const chunkZ = centerZ + dz;
+          const key = chunkKey(chunkX, chunkZ);
+          needed.add(key);
+          if (!terrainChunks.has(key)) {
+            terrainChunks.set(key, createTerrainChunk(chunkX, chunkZ));
+          }
+        }
+      }
+
+      for (const [key, mesh] of terrainChunks) {
+        if (!needed.has(key)) {
+          scene.remove(mesh);
+          mesh.geometry.dispose();
+          mesh.material.dispose();
+          terrainChunks.delete(key);
+        }
+      }
+    }
+
+    syncTerrainChunks();
+    camera.position.y = heightAt(camera.position.x, camera.position.z) + 1.7;
 
     function createTree(x, z, scale = 1) {
       const tree = new THREE.Group();
@@ -325,7 +469,7 @@
       leaves.position.y = 2.25 * scale;
       leaves.castShadow = true;
       tree.add(leaves);
-      tree.position.set(x, 0, z);
+      tree.position.set(x, heightAt(x, z), z);
       scene.add(tree);
     }
 
@@ -496,14 +640,17 @@
       const rightZ = -Math.sin(yaw);
       camera.position.x += (forwardX * forward + rightX * side) * distance;
       camera.position.z += (forwardZ * forward + rightZ * side) * distance;
-      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -108, 108);
-      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -108, 108);
+      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -256, 256);
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -256, 256);
+      syncTerrainChunks();
     }
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
       movePlayer(delta);
+      const targetHeight = heightAt(camera.position.x, camera.position.z) + 1.7;
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetHeight, Math.min(1, delta * 10));
       camera.rotation.order = "YXZ";
       camera.rotation.y = yaw;
       camera.rotation.x = pitch;

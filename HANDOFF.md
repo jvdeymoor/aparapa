@@ -5,14 +5,20 @@
 - Repository GitHub: `jvdeymoor/progetto27`
 - Sito pubblicato: `https://jvdeymoor.github.io/progetto27/`
 - Branch e pubblicazione: `main`, cartella principale (`/(root)`) tramite GitHub Pages.
-- Il repository contiene attualmente un unico file principale: `index.html`.
+- Il repository contiene attualmente il file principale `index.html`.
 
 ## Stato attuale
 
-È stata creata una prima versione giocabile di un mondo 3D in prima persona:
+È disponibile una versione giocabile di un mondo 3D in prima persona:
 
-- pianura con prato verde e cielo azzurro;
-- alberi e nuvole semplici per dare riferimenti nell’ambiente;
+- terreno procedurale a chunk, con colline, prati, rocce e variazioni di quota;
+- generazione deterministica tramite seed;
+- chunk da 64×64 con 32 suddivisioni per lato;
+- caricamento dinamico dei chunk in una griglia 5×5 attorno al giocatore;
+- bordi dei chunk coerenti perché l’altezza usa coordinate globali;
+- alberi posizionati sulla quota reale del terreno;
+- altezza del giocatore aggiornata seguendo il terreno;
+- cielo, nebbia, illuminazione, alberi e nuvole;
 - movimento su PC con WASD o frecce;
 - visuale su PC con mouse e puntatore bloccato;
 - joystick virtuale a sinistra su cellulare;
@@ -20,25 +26,26 @@
 - ingresso a schermo intero quando si preme `INIZIA` (se supportato dal browser);
 - schermata iniziale con pulsante `INIZIA`.
 
-La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset locali per questa versione.
+La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset locali.
 
 ## Ultima modifica
 
-L’ultimo aggiornamento aggiunge l’ingresso a schermo intero all’avvio del mondo. Il file aggiornato è già stato salvato direttamente nel repository GitHub.
+Il commit `666c77d7b7136af16a4d1d57ebe2092231246244` aggiunge il generatore procedurale di terreno in `index.html`. Il codice è stato controllato sintatticamente e salvato direttamente su `main`.
 
 ## Prossimi sviluppi possibili
 
-- aggiungere un personaggio o altri elementi interattivi;
-- migliorare terreno, alberi, cielo e illuminazione;
+- aggiungere collisioni con alberi e punti di interesse;
+- aggiungere materiali più dettagliati o texture;
+- aggiungere acqua, fiumi e biomi;
 - aggiungere suoni e musica;
-- aggiungere collisioni e punti di interesse;
 - aggiungere un menu e un sistema di salvataggio;
-- ottimizzare il rendering per telefoni meno potenti.
+- ottimizzare il numero di suddivisioni e il caricamento per telefoni meno potenti.
 
 ## Note importanti
 
 - Non inserire password, token o credenziali nel repository.
 - Dopo ogni commit su `main`, GitHub Pages aggiorna il sito dopo alcuni minuti.
+- Se il sito mostra ancora la versione precedente, attendere la propagazione della pubblicazione o ricaricare senza cache.
 
 ## Uso del plugin GitHub in Codex
 

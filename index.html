@@ -369,12 +369,24 @@
     let previousLookX = 0;
     let previousLookY = 0;
 
-    function beginGame() {
-      started = true;
-      startScreen.classList.add("hidden");
+    async function enterImmersiveMode() {
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {
+        // Alcuni browser mobili non permettono lo schermo intero nelle pagine web.
+      }
+
       if (matchMedia("(pointer: fine)").matches && document.pointerLockElement !== renderer.domElement) {
         renderer.domElement.requestPointerLock?.();
       }
+    }
+
+    function beginGame() {
+      started = true;
+      startScreen.classList.add("hidden");
+      enterImmersiveMode();
     }
 
     startButton.addEventListener("click", beginGame);

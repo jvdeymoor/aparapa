@@ -37,8 +37,6 @@ L’ultimo aggiornamento aggiunge l’ingresso a schermo intero all’avvio del 
 
 ## Note importanti
 
-- Questo progetto è separato dal sito Beat-O-Gato.
-- Beat-O-Gato usa invece `index.html`, `click.php` e `click.txt` sul suo hosting PHP.
 - Non inserire password, token o credenziali nel repository.
 - Dopo ogni commit su `main`, GitHub Pages aggiorna il sito dopo alcuni minuti.
 

@@ -42,29 +42,16 @@
       pointer-events: none;
     }
 
-    .title {
+    .counter {
       position: absolute;
       top: 20px;
       left: 22px;
       margin: 0;
       color: rgba(255, 255, 255, 0.95);
-      font-size: clamp(1rem, 2vw, 1.35rem);
+      font-size: 1.15rem;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-shadow: 0 2px 4px rgba(17, 64, 34, 0.45);
-    }
-
-    .help {
-      position: absolute;
-      right: 22px;
-      top: 20px;
-      margin: 0;
-      padding: 9px 13px;
-      border: 1px solid rgba(255, 255, 255, 0.55);
-      border-radius: 999px;
-      background: rgba(25, 92, 61, 0.42);
-      font-size: 0.82rem;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     .crosshair {
@@ -181,34 +168,7 @@
       touch-action: none;
     }
 
-    .touch-label {
-      position: absolute;
-      bottom: 12px;
-      color: rgba(255, 255, 255, 0.62);
-      font-size: 0.72rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    }
-
-    .touch-label.left {
-      left: 43px;
-    }
-
-    .touch-label.right {
-      right: 28px;
-    }
-
-    @media (pointer: coarse), (max-width: 700px) {
-      .help {
-        display: none;
-      }
-
-      .title {
-        top: 14px;
-        left: 16px;
-      }
-
+    @media (pointer: coarse) and (max-width: 900px) {
       #touchControls {
         display: block;
       }
@@ -224,16 +184,13 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">IL MIO MONDO</p>
-    <p class="help">WASD · mouse / swipe per guardarti intorno</p>
+    <p id="modificationCounter" class="counter">17</p>
     <div class="crosshair"></div>
   </div>
 
   <div id="touchControls" aria-hidden="true">
     <div id="joystick"><div id="joystickKnob"></div></div>
     <div id="lookArea"></div>
-    <span class="touch-label left">premi = vola · su = spara</span>
-    <span class="touch-label right">swipe / guarda</span>
   </div>
 
   <section id="startScreen">
@@ -253,6 +210,9 @@
     const joystick = document.getElementById("joystick");
     const joystickKnob = document.getElementById("joystickKnob");
     const lookArea = document.getElementById("lookArea");
+    const modificationCounter = document.getElementById("modificationCounter");
+    const MODIFICATION_COUNT = 17;
+    modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x83c9f4);
@@ -288,13 +248,13 @@
     const TERRAIN = {
       chunkSize: 64,
       segments: 32,
-      loadRadius: 2
+      loadRadius: 3
     };
-    const WORLD_HALF_SIZE = 160;
-    const CITY_HALF_SIZE = 96;
+    const WORLD_HALF_SIZE = 192;
+    const CITY_HALF_SIZE = 128;
     const MOUNTAIN_BELT_SIZE = WORLD_HALF_SIZE - CITY_HALF_SIZE;
-    const MOUNTAIN_HEIGHT = 38;
-    const MAX_BUILDINGS = 300;
+    const MOUNTAIN_HEIGHT = 40;
+    const MAX_BUILDINGS = 400;
 
     const terrainChunks = new Map();
     const structureChunks = new Map();
@@ -472,18 +432,38 @@
     function createAlienBuildingGeometry() {
       const data = { positions: [], normals: [], colors: [], indices: [] };
       const columns = [
-        [-0.5, -0.38, [1, 1, 1]],
-        [-0.38, -0.33, [0.22, 0.28, 0.3]],
-        [-0.33, -0.08, [1, 1, 1]],
+        [-0.5, -0.36, [1, 1, 1]],
+        [-0.36, -0.31, [0.18, 0.24, 0.27]],
+        [-0.31, -0.08, [1, 1, 1]],
         [-0.08, -0.03, [1, 0.68, 0.24]],
-        [-0.03, 0.23, [1, 1, 1]],
-        [0.23, 0.28, [0.22, 0.28, 0.3]],
-        [0.28, 0.5, [1, 1, 1]]
+        [-0.03, 0.14, [1, 1, 1]],
+        [0.14, 0.19, [0.18, 0.24, 0.27]],
+        [0.19, 0.5, [1, 1, 1]]
       ];
+      const levels = 5;
 
-      // Colonne verticali contigue: le scanalature restano dentro l’ingombro esterno.
-      for (const [minX, maxX, color] of columns) {
-        appendBox(data, minX, maxX, 0, 1, -0.5, 0.5, color);
+      for (let level = 0; level < levels; level++) {
+        const minY = level / levels;
+        const maxY = (level + 1) / levels;
+        const ringInset = level === 1 || level === 3 ? 0.06 : 0;
+        const span = 1 - ringInset * 2;
+
+        for (const [rawMinX, rawMaxX, color] of columns) {
+          const minX = -0.5 + ringInset + (rawMinX + 0.5) * span;
+          const maxX = -0.5 + ringInset + (rawMaxX + 0.5) * span;
+          const isNiche = color[0] < 0.5;
+          const depthInset = isNiche ? 0.08 : 0;
+          appendBox(
+            data,
+            minX,
+            maxX,
+            minY,
+            maxY,
+            -0.5 + ringInset + depthInset,
+            0.5 - ringInset - depthInset,
+            color
+          );
+        }
       }
 
       const geometry = new THREE.BufferGeometry();
@@ -535,9 +515,9 @@
         && chunkMaxZ > -CITY_HALF_SIZE
         && chunkMinZ < CITY_HALF_SIZE
       ) {
-        const count = 10 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 7);
-        const columns = 4;
-        const rows = 4;
+        const count = 20 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 6);
+        const columns = 5;
+        const rows = 5;
 
         for (let index = 0; index < count; index++) {
           if (activeBuildingCount >= MAX_BUILDINGS) break;
@@ -547,8 +527,8 @@
           const row = Math.floor(index / columns) % rows;
           const jitterX = (seededRandom(chunkX, chunkZ, slot) - 0.5) * 4;
           const jitterZ = (seededRandom(chunkX, chunkZ, slot + 1) - 0.5) * 4;
-          const localX = 6 + column * 15 + jitterX;
-          const localZ = 6 + row * 15 + jitterZ;
+          const localX = 5 + column * 12 + jitterX;
+          const localZ = 5 + row * 12 + jitterZ;
           const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
           const scale = 0.6 + seededRandom(chunkX, chunkZ, slot + 3) * 0.85;
           const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
@@ -857,12 +837,13 @@
     });
 
     addEventListener("keydown", event => {
-      keys.add(event.key.toLowerCase());
-      if (["w", "a", "s", "d", "arrowup", "arrowdown", " "].includes(event.key.toLowerCase())) {
-        event.preventDefault();
-      }
+      if (event.key.toLowerCase() !== "w") return;
+      keys.add("w");
+      event.preventDefault();
     });
-    addEventListener("keyup", event => keys.delete(event.key.toLowerCase()));
+    addEventListener("keyup", event => {
+      if (event.key.toLowerCase() === "w") keys.delete("w");
+    });
 
     addEventListener("mousemove", event => {
       if (document.pointerLockElement !== renderer.domElement || !started) return;
@@ -873,6 +854,7 @@
 
     renderer.domElement.addEventListener("pointerdown", event => {
       if (!started || !matchMedia("(pointer: fine)").matches) return;
+      if (event.button === 0) shootProjectile();
       mouseLookPointer = event.pointerId;
       previousLookX = event.clientX;
       previousLookY = event.clientY;
@@ -1090,15 +1072,7 @@
       if (!started || !flyer) return;
 
       let throttle = 0;
-      let pitchInput = 0;
-      let turnInput = 0;
-
       if (keys.has("w")) throttle = 1;
-      if (keys.has("s")) throttle = -0.35;
-      if (keys.has("a")) turnInput -= 1;
-      if (keys.has("d")) turnInput += 1;
-      if (keys.has("arrowup")) pitchInput += 1;
-      if (keys.has("arrowdown")) pitchInput -= 1;
 
       // Joystick mobile: avanti accelera e spara, indietro oltre metà raggio
       // disattiva l'acceleratore ma continua a sparare da fermo.
@@ -1109,14 +1083,10 @@
       }
 
       shotCooldown = Math.max(0, shotCooldown - delta);
-      if ((stickShooting || keys.has(" ")) && shotCooldown <= 0) {
+      if (stickShooting && shotCooldown <= 0) {
         shootProjectile();
         shotCooldown = 0.18;
       }
-
-      yaw += turnInput * delta * 1.2;
-      pitch += pitchInput * delta * 0.85;
-      pitch = THREE.MathUtils.clamp(pitch, -0.8, 0.8);
 
       const speed = throttle < 0 ? 5.5 : 13 * throttle;
       flightDirection.set(

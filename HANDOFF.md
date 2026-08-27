@@ -9,24 +9,24 @@
 
 ## Stato attuale
 
-È disponibile una versione giocabile di un mondo 3D in prima persona:
+È disponibile una versione giocabile di un mondo 3D urbano con protagonista volante:
 
 - terreno procedurale a chunk, con quattro profili: pianura, leggermente mosso, scosceso e montagna;
 - profili diversi per ogni area, interpolati ai bordi per evitare scalini;
 - altezza globale regolabile tramite `TERRAIN.verticalScale`;
-- colori e superfici diversificate: prato, roccia, terra e sabbia;
-- città procedurale per chunk con grattacieli ravvicinati, torri di altezze diverse, facciate in cemento/vetro, fasce luminose e tetti piatti;
+- terreno urbano con asfalto dominante e chiazze di ghiaia, terra, cemento e poca erba;
+- città procedurale per chunk con grattacieli ravvicinati, torri di altezze diverse, facciate in cemento/vetro, fasce luminose, tetti piatti e fondamenta profonde 2,6 metri;
 - generazione deterministica tramite seed;
 - chunk da 64×64 con 32 suddivisioni per lato;
 - caricamento dinamico dei chunk in una griglia 5×5 attorno al giocatore;
 - bordi dei chunk coerenti perché l’altezza usa coordinate globali;
-- alberi posizionati sulla quota reale del terreno;
-- altezza del giocatore aggiornata seguendo il terreno;
-- cielo, nebbia, illuminazione, alberi e nuvole;
-- movimento su PC con WASD o frecce;
+- protagonista trasformato in un velivolo visibile, con quota libera sopra il terreno;
+- il velivolo resta sopra il terreno e i chunk seguono la sua posizione;
+- cielo, nebbia, illuminazione e nuvole, senza alberi;
+- pilotaggio su PC con WASD/frecce e mouse o trascinamento;
 - visuale su PC con mouse e puntatore bloccato;
-- joystick virtuale a sinistra su cellulare;
-- trascinamento sul lato destro dello schermo per guardarsi intorno su cellulare;
+- joystick virtuale a sinistra su cellulare: tenerlo premuto dà spinta, su/giù alza o abbassa il muso, sinistra/destra curva;
+- swipe sul lato destro dello schermo per controllare visuale e direzione come il mouse su PC;
 - avvio in finestra del browser, senza richiesta automatica di fullscreen;
 - schermata iniziale con pulsante `INIZIA`.
 
@@ -34,11 +34,11 @@ La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset lo
 
 ## Ultima modifica
 
-I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239`, `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7`, `575e138c2e1e974ad1d176a80daaeb581f8a5af3`, `91526c4971a717fbeeca85c1b3d4cfe1f8aa1305`, `51770673a22d3874a00a7b47ef524515a4894338` e `96330524b6596781f59052309b4a2b00228a0b2a` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli, introducono i quattro profili con superfici colorate, il controllo globale dell’altezza, l’avvio senza fullscreen automatico, le costruzioni procedurali e la città compatta di grattacieli. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
+I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239`, `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7`, `575e138c2e1e974ad1d176a80daaeb581f8a5af3`, `91526c4971a717fbeeca85c1b3d4cfe1f8aa1305`, `51770673a22d3874a00a7b47ef524515a4894338`, `96330524b6596781f59052309b4a2b00228a0b2a` e `cc495f07c6bf5563c8add9c0cc1019e7df9dc7b4` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli, introducono i quattro profili con superfici colorate, il controllo globale dell’altezza, l’avvio senza fullscreen automatico, le costruzioni procedurali e la città compatta di grattacieli. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
 
 ## Prossimi sviluppi possibili
 
-- aggiungere collisioni con alberi e punti di interesse;
+- aggiungere collisioni con edifici e punti di interesse;
 - aggiungere materiali più dettagliati o texture;
 - aggiungere acqua, fiumi e biomi;
 - aggiungere suoni e musica;

@@ -768,52 +768,33 @@
       })
     };
 
-    function createFlyingVehicle() {
+    function createDrone() {
       const group = new THREE.Group();
 
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1.15, 0.62, 3.4),
+      // Drone completamente sferico, grande circa quanto un pallone da calcio.
+      const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(0.34, 24, 18),
         FLYING_MATERIALS.body
       );
-      body.position.y = 0.05;
-      body.castShadow = true;
-      group.add(body);
+      shell.castShadow = true;
+      shell.receiveShadow = true;
+      group.add(shell);
 
-      const nose = new THREE.Mesh(
-        new THREE.ConeGeometry(0.57, 1.35, 4),
-        FLYING_MATERIALS.body
-      );
-      nose.rotation.x = -Math.PI * 0.5;
-      nose.position.z = -2.28;
-      nose.castShadow = true;
-      group.add(nose);
-
-      const cockpit = new THREE.Mesh(
-        new THREE.SphereGeometry(0.46, 16, 10),
+      const sensor = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 16, 10),
         FLYING_MATERIALS.glass
       );
-      cockpit.scale.set(0.92, 0.5, 1.2);
-      cockpit.position.set(0, 0.38, -0.25);
-      cockpit.castShadow = true;
-      group.add(cockpit);
-
-      const fin = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.85, 0.78),
-        FLYING_MATERIALS.dark
-      );
-      fin.position.set(0, 0.38, 1.2);
-      fin.castShadow = true;
-      group.add(fin);
+      sensor.position.set(0, 0.12, -0.31);
+      sensor.castShadow = true;
+      group.add(sensor);
 
       const beacon = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 10, 8),
+        new THREE.SphereGeometry(0.06, 10, 8),
         FLYING_MATERIALS.light
       );
-      beacon.position.set(0, 0.18, -1.38);
+      beacon.position.set(0, 0, -0.35);
       group.add(beacon);
 
-      // Dimensione complessiva circa quella di un pallone da calcio.
-      group.scale.setScalar(0.18);
       return group;
     }
 
@@ -861,13 +842,25 @@
       return best || { x: -112, y: heightAt(-112, -112) + 110, z: -112 };
     }
 
-    flyer = createFlyingVehicle();
+    flyer = createDrone();
     const safeSpawn = findSafeSpawn();
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
-    // Spawn iniziale in un corridoio libero tra i primi grattacieli.
-    flyer.position.set(-5, heightAt(-5, -5) + 16, -5);
     flyer.userData.hitbox = new THREE.Sphere();
-    flyer.visible = false;
+
+    // Wireframe gialla sempre visibile: rappresenta la hitbox sferica reale.
+    const hitboxVisual = new THREE.Mesh(
+      new THREE.SphereGeometry(flyerHitboxRadius, 24, 16),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd400,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.95,
+        depthTest: false
+      })
+    );
+    hitboxVisual.name = "aircraftHitbox";
+    hitboxVisual.renderOrder = 20;
+    flyer.add(hitboxVisual);
     scene.add(flyer);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
@@ -1172,13 +1165,13 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // Prima persona: la camera è dentro il corpo del velivolo.
-        cameraPosition.set(0, 0.24, -0.72).applyQuaternion(flyer.quaternion);
+        // Terza persona: la camera resta arretrata e il drone è ben davanti.
+        cameraPosition.set(0, 2.1, 5.8).applyQuaternion(flyer.quaternion);
         cameraPosition.add(flyer.position);
-        camera.position.lerp(cameraPosition, Math.min(1, delta * 14));
+        camera.position.lerp(cameraPosition, Math.min(1, delta * 8));
 
-        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 10);
-        cameraLookTarget.y += 0.5;
+        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.8);
+        cameraLookTarget.y += 0.25;
         camera.lookAt(cameraLookTarget);
       }
 

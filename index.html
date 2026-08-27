@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">12</p>
+    <p class="title">13</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -778,7 +778,7 @@
       // Modello compatto ispirato a un drone sferico corazzato:
       // nessun elemento supera il diametro della sfera (0,68 unità).
       const shell = new THREE.Mesh(
-        new THREE.SphereGeometry(0.34, 24, 18),
+        new THREE.SphereGeometry(0.22, 24, 18),
         FLYING_MATERIALS.body
       );
       shell.castShadow = true;
@@ -786,7 +786,7 @@
       group.add(shell);
 
       const frontRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.16, 0.018, 8, 24),
+        new THREE.TorusGeometry(0.13, 0.018, 8, 24),
         FLYING_MATERIALS.dark
       );
       frontRing.rotation.x = Math.PI * 0.5;
@@ -794,10 +794,10 @@
       group.add(frontRing);
 
       const sensor = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 16, 10),
+        new THREE.SphereGeometry(0.06, 16, 10),
         FLYING_MATERIALS.glass
       );
-      sensor.position.set(0, 0.02, -0.27);
+      sensor.position.set(0, 0.02, -0.19);
       sensor.castShadow = true;
       group.add(sensor);
 
@@ -805,16 +805,16 @@
         new THREE.SphereGeometry(0.035, 10, 8),
         FLYING_MATERIALS.light
       );
-      beacon.position.set(0, 0.02, -0.32);
+      beacon.position.set(0, 0.02, -0.24);
       group.add(beacon);
 
       function addWing(side) {
         const wingGeometry = new THREE.BufferGeometry();
         wingGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
-          side * 0.09, 0.08, 0.12,
-          side * 0.31, 0.055, 0.08,
-          side * 0.32, 0.025, -0.14,
-          side * 0.13, 0.04, -0.19
+          side * 0.16, 0.08, 0.12,
+          side * 0.33, 0.055, 0.08,
+          side * 0.34, 0.025, -0.14,
+          side * 0.18, 0.04, -0.19
         ], 3));
         wingGeometry.setIndex([0, 1, 2, 0, 2, 3]);
         wingGeometry.computeVertexNormals();
@@ -833,19 +833,19 @@
         group.add(wing);
 
         const wingEdge = new THREE.Mesh(
-          new THREE.BoxGeometry(0.23, 0.018, 0.018),
+          new THREE.BoxGeometry(0.2, 0.018, 0.018),
           FLYING_MATERIALS.dark
         );
-        wingEdge.position.set(side * 0.205, 0.055, -0.055);
+        wingEdge.position.set(side * 0.24, 0.055, -0.055);
         wingEdge.rotation.y = side * 0.34;
         wingEdge.castShadow = true;
         group.add(wingEdge);
 
         const wingLight = new THREE.Mesh(
-          new THREE.BoxGeometry(0.17, 0.009, 0.012),
+          new THREE.BoxGeometry(0.15, 0.009, 0.012),
           FLYING_MATERIALS.light
         );
-        wingLight.position.set(side * 0.215, 0.046, -0.07);
+        wingLight.position.set(side * 0.245, 0.046, -0.07);
         wingLight.rotation.y = side * 0.34;
         group.add(wingLight);
       }

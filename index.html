@@ -184,7 +184,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">21</p>
+    <p id="modificationCounter" class="counter">22</p>
     <div class="crosshair"></div>
   </div>
 
@@ -222,7 +222,7 @@
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 21;
+    const MODIFICATION_COUNT = 22;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -824,7 +824,9 @@
       decorativeDroneAnchor.add(flyer.position);
       decorativeDroneAnchor.addScaledVector(flightDirection, 1);
       decorativeDrone.position.copy(decorativeDroneAnchor);
-      decorativeDroneDirection.copy(flightDirection).normalize();
+      // Il test del modello usa l'asse globale X negativo: prima avanzava
+      // sull'asse globale Z negativo tramite flightDirection.
+      decorativeDroneDirection.set(-1, 0, 0);
       // Punto zero del drone: orientamento predefinito di +90° sull'asse X.
       decorativeDrone.quaternion.copy(flyer.quaternion);
       decorativeDrone.rotateY(Math.PI * 0.5);

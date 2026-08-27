@@ -230,21 +230,21 @@
 
   <div class="hud" aria-hidden="true">
     <p class="title">IL MIO MONDO</p>
-    <p class="help">WASD / frecce · mouse per guardarti intorno</p>
+    <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
 
   <div id="touchControls" aria-hidden="true">
     <div id="joystick"><div id="joystickKnob"></div></div>
     <div id="lookArea"></div>
-    <span class="touch-label left">muovi</span>
-    <span class="touch-label right">guarda</span>
+    <span class="touch-label left">vola</span>
+    <span class="touch-label right">swipe / guarda</span>
   </div>
 
   <section id="startScreen">
     <div class="start-card">
       <h1>Benvenuto nel mondo</h1>
-      <p>Colline, prati e rocce generate in tempo reale.<br>Entra ed esplora il terreno.</p>
+      <p>Asfalto, ghiaia, terra, cemento e poca erba.<br>Vola tra i grattacieli della città.</p>
       <button id="startButton" type="button">INIZIA</button>
     </div>
   </section>
@@ -310,6 +310,7 @@
     ];
     const terrainChunks = new Map();
     const structureChunks = new Map();
+    let flyer = null;
     const BUILDING_MATERIALS = {
       facades: [
         new THREE.MeshStandardMaterial({ color: 0x6d7378, roughness: 0.82, metalness: 0.08 }),
@@ -429,21 +430,35 @@
     }
 
     function terrainColor(height, slope, x, z) {
-      const profile = terrainProfileAt(x, z);
-      const color = new THREE.Color(profile.grass);
-      const variation = (valueNoise(x * 0.08 + 73, z * 0.08 - 31) - 0.5) * 0.12;
-      const surfaceNoise = valueNoise(x * 0.055 - 91, z * 0.055 + 47);
-      const rockLine = 1.2 + profile.amplitude * 0.17;
+      // Superficie urbana: l'asfalto è dominante, con chiazze determinate
+      // sempre dalle coordinate globali per restare identica quando il chunk viene ricreato.
+      const asphalt = new THREE.Color(0x4b4f50);
+      const gravel = new THREE.Color(0x9a958c);
+      const dirt = new THREE.Color(0x76523b);
+      const concrete = new THREE.Color(0x858887);
+      const grass = new THREE.Color(0x6d874f);
+      const patch = valueNoise(x * 0.035 + 41, z * 0.035 - 17);
+      const detail = valueNoise(x * 0.13 - 83, z * 0.13 + 29);
+      const variation = (detail - 0.5) * 0.12;
+      let color;
 
-      if (slope > 1.05 || height > rockLine) {
-        color.setRGB(0.36 + variation, 0.37 + variation, 0.35 + variation);
-      } else if (height < -1.35 && surfaceNoise > 0.28) {
-        color.setRGB(0.76 + variation, 0.65 + variation, 0.39 + variation);
-      } else if (surfaceNoise > 0.79 || (slope > 0.55 && surfaceNoise > 0.56)) {
-        color.setRGB(0.47 + variation, 0.32 + variation, 0.19 + variation);
+      if (slope > 1.15) {
+        color = concrete;
+      } else if (patch < 0.5) {
+        color = asphalt;
+      } else if (patch < 0.72) {
+        color = gravel;
+      } else if (patch < 0.9) {
+        color = dirt;
+      } else if (patch < 0.965) {
+        color = concrete;
       } else {
-        color.offsetHSL(0, variation * 0.18, variation);
+        // Erba rara: resta una presenza secondaria nell'ambiente urbano.
+        color = grass;
       }
+
+      color = color.clone();
+      color.offsetHSL(0, 0, variation);
       return color;
     }
 
@@ -509,11 +524,14 @@
         wallHeight = 42 + scale * 34;
       }
 
+      // Fondamenta profonde: penetrano nel terreno e impediscono l'effetto edificio sospeso.
+      const foundationDepth = 2.6;
+      const foundationTop = 0.18;
       const foundation = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.7, 0.42, depth + 0.7),
+        new THREE.BoxGeometry(width + 0.9, foundationDepth, depth + 0.9),
         BUILDING_MATERIALS.concrete
       );
-      foundation.position.y = 0.21;
+      foundation.position.y = foundationTop - foundationDepth * 0.5;
       foundation.castShadow = true;
       foundation.receiveShadow = true;
       group.add(foundation);
@@ -522,7 +540,7 @@
         new THREE.BoxGeometry(width, wallHeight, depth),
         facade
       );
-      tower.position.y = 0.42 + wallHeight * 0.5;
+      tower.position.y = foundationTop + wallHeight * 0.5;
       tower.castShadow = true;
       tower.receiveShadow = true;
       group.add(tower);
@@ -534,7 +552,7 @@
         new THREE.BoxGeometry(width + 0.18, 0.34, depth + 0.18),
         BUILDING_MATERIALS.roof
       );
-      roof.position.y = 0.42 + wallHeight + 0.17;
+      roof.position.y = foundationTop + wallHeight + 0.17;
       roof.castShadow = true;
       group.add(roof);
 
@@ -553,7 +571,7 @@
           new THREE.BoxGeometry(width * 1.18, 3.2, depth * 1.18),
           BUILDING_MATERIALS.concrete
         );
-        podium.position.y = 1.6;
+        podium.position.y = foundationTop + 1.6;
         podium.castShadow = true;
         podium.receiveShadow = true;
         group.add(podium);
@@ -670,8 +688,10 @@
     }
 
     function syncTerrainChunks() {
-      const centerX = Math.floor(camera.position.x / TERRAIN.chunkSize);
-      const centerZ = Math.floor(camera.position.z / TERRAIN.chunkSize);
+      const focusX = flyer ? flyer.position.x : camera.position.x;
+      const focusZ = flyer ? flyer.position.z : camera.position.z;
+      const centerX = Math.floor(focusX / TERRAIN.chunkSize);
+      const centerZ = Math.floor(focusZ / TERRAIN.chunkSize);
       const needed = new Set();
 
       for (let dz = -TERRAIN.loadRadius; dz <= TERRAIN.loadRadius; dz++) {
@@ -708,35 +728,87 @@
     }
 
     syncTerrainChunks();
-    camera.position.y = heightAt(camera.position.x, camera.position.z) + 1.7;
 
-    function createTree(x, z, scale = 1) {
-      const tree = new THREE.Group();
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18 * scale, 0.24 * scale, 1.8 * scale, 8),
-        new THREE.MeshStandardMaterial({ color: 0x70492e, roughness: 1 })
-      );
-      trunk.position.y = 0.9 * scale;
-      trunk.castShadow = true;
-      tree.add(trunk);
+    const FLYING_MATERIALS = {
+      body: new THREE.MeshStandardMaterial({ color: 0xd8e3e4, roughness: 0.38, metalness: 0.62 }),
+      dark: new THREE.MeshStandardMaterial({ color: 0x1c252a, roughness: 0.46, metalness: 0.7 }),
+      glass: new THREE.MeshStandardMaterial({ color: 0x4cc2d8, roughness: 0.18, metalness: 0.35 }),
+      light: new THREE.MeshStandardMaterial({
+        color: 0xffd76a,
+        emissive: 0x8d4f12,
+        emissiveIntensity: 1.1,
+        roughness: 0.3
+      })
+    };
 
-      const leaves = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(1.2 * scale, 1),
-        new THREE.MeshStandardMaterial({ color: 0x2d7e3c, roughness: 1 })
+    function createFlyingVehicle() {
+      const group = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(1.15, 0.62, 3.4),
+        FLYING_MATERIALS.body
       );
-      leaves.position.y = 2.25 * scale;
-      leaves.castShadow = true;
-      tree.add(leaves);
-      tree.position.set(x, heightAt(x, z), z);
-      scene.add(tree);
+      body.position.y = 0.05;
+      body.castShadow = true;
+      group.add(body);
+
+      const nose = new THREE.Mesh(
+        new THREE.ConeGeometry(0.57, 1.35, 4),
+        FLYING_MATERIALS.body
+      );
+      nose.rotation.x = -Math.PI * 0.5;
+      nose.position.z = -2.28;
+      nose.castShadow = true;
+      group.add(nose);
+
+      const cockpit = new THREE.Mesh(
+        new THREE.SphereGeometry(0.46, 16, 10),
+        FLYING_MATERIALS.glass
+      );
+      cockpit.scale.set(0.92, 0.5, 1.2);
+      cockpit.position.set(0, 0.38, -0.25);
+      cockpit.castShadow = true;
+      group.add(cockpit);
+
+      const wings = new THREE.Mesh(
+        new THREE.BoxGeometry(4.8, 0.12, 0.92),
+        FLYING_MATERIALS.dark
+      );
+      wings.position.set(0, -0.06, 0.2);
+      wings.castShadow = true;
+      group.add(wings);
+
+      const tailWing = new THREE.Mesh(
+        new THREE.BoxGeometry(2.1, 0.1, 0.5),
+        FLYING_MATERIALS.dark
+      );
+      tailWing.position.set(0, 0.02, 1.45);
+      tailWing.castShadow = true;
+      group.add(tailWing);
+
+      const fin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.85, 0.78),
+        FLYING_MATERIALS.dark
+      );
+      fin.position.set(0, 0.38, 1.2);
+      fin.castShadow = true;
+      group.add(fin);
+
+      const beacon = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 10, 8),
+        FLYING_MATERIALS.light
+      );
+      beacon.position.set(0, 0.18, -1.38);
+      group.add(beacon);
+
+      return group;
     }
 
-    createTree(-18, -29, 1.7);
-    createTree(21, -36, 2.1);
-    createTree(-32, -52, 2.7);
-    createTree(34, -66, 3.1);
-    createTree(-55, -84, 3.8);
-    createTree(61, -94, 4.2);
+    flyer = createFlyingVehicle();
+    flyer.position.set(0, heightAt(0, 8) + 16, 8);
+    scene.add(flyer);
+
+    // Nessun albero: la scena resta una metropoli urbana compatta.
 
     function createCloud(x, y, z, scale = 1) {
       const cloud = new THREE.Group();
@@ -763,6 +835,9 @@
     const keys = new Set();
     let yaw = 0;
     let pitch = 0;
+    const cameraFollowPosition = new THREE.Vector3();
+    const cameraLookTarget = new THREE.Vector3();
+    const flightDirection = new THREE.Vector3();
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
@@ -895,48 +970,66 @@
     lookArea.addEventListener("pointerup", stopLooking);
     lookArea.addEventListener("pointercancel", stopLooking);
 
-    function movePlayer(delta) {
-      if (!started) return;
+    function moveFlyer(delta) {
+      if (!started || !flyer) return;
 
-      let forward = 0;
-      let side = 0;
-      if (keys.has("w") || keys.has("arrowup")) forward += 1;
-      if (keys.has("s") || keys.has("arrowdown")) forward -= 1;
-      if (keys.has("a") || keys.has("arrowleft")) side -= 1;
-      if (keys.has("d") || keys.has("arrowright")) side += 1;
-      if (Math.abs(mobileMove.x) > 0.05 || Math.abs(mobileMove.y) > 0.05) {
-        side = mobileMove.x;
-        forward = -mobileMove.y;
+      let throttle = 0;
+      let pitchInput = 0;
+      let turnInput = 0;
+
+      if (keys.has("w")) throttle = 1;
+      if (keys.has("s")) throttle = -0.35;
+      if (keys.has("a")) turnInput -= 1;
+      if (keys.has("d")) turnInput += 1;
+      if (keys.has("arrowup")) pitchInput += 1;
+      if (keys.has("arrowdown")) pitchInput -= 1;
+
+      // Tenere premuto il joystick fa avanzare il velivolo.
+      // La spinta verticale del joystick alza o abbassa il muso.
+      if (joystickPointer !== null) {
+        const joystickForce = Math.min(1, Math.hypot(mobileMove.x, mobileMove.y));
+        throttle = 0.45 + joystickForce * 0.75;
+        turnInput = mobileMove.x;
+        pitchInput = -mobileMove.y;
       }
 
-      const length = Math.hypot(forward, side);
-      if (length > 1) {
-        forward /= length;
-        side /= length;
-      }
+      yaw += turnInput * delta * 1.2;
+      pitch += pitchInput * delta * 0.85;
+      pitch = THREE.MathUtils.clamp(pitch, -0.8, 0.8);
 
-      const speed = keys.has("shift") ? 12 : 7;
-      const distance = speed * delta;
-      const forwardX = -Math.sin(yaw);
-      const forwardZ = -Math.cos(yaw);
-      const rightX = Math.cos(yaw);
-      const rightZ = -Math.sin(yaw);
-      camera.position.x += (forwardX * forward + rightX * side) * distance;
-      camera.position.z += (forwardZ * forward + rightZ * side) * distance;
-      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -256, 256);
-      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -256, 256);
+      const speed = throttle < 0 ? 5.5 : 13 * throttle;
+      flightDirection.set(
+        -Math.sin(yaw) * Math.cos(pitch),
+        Math.sin(pitch),
+        -Math.cos(yaw) * Math.cos(pitch)
+      );
+      flyer.position.addScaledVector(flightDirection, speed * delta);
+
+      const groundHeight = heightAt(flyer.position.x, flyer.position.z);
+      flyer.position.y = THREE.MathUtils.clamp(
+        flyer.position.y,
+        groundHeight + 4.5,
+        140
+      );
+      flyer.rotation.set(pitch, yaw, 0);
       syncTerrainChunks();
     }
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
-      movePlayer(delta);
-      const targetHeight = heightAt(camera.position.x, camera.position.z) + 1.7;
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetHeight, Math.min(1, delta * 10));
-      camera.rotation.order = "YXZ";
-      camera.rotation.y = yaw;
-      camera.rotation.x = pitch;
+      moveFlyer(delta);
+
+      if (flyer) {
+        cameraFollowPosition.set(0, 3.8, 10).applyQuaternion(flyer.quaternion);
+        cameraFollowPosition.add(flyer.position);
+        camera.position.lerp(cameraFollowPosition, Math.min(1, delta * 8));
+
+        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 9);
+        cameraLookTarget.y += 0.8;
+        camera.lookAt(cameraLookTarget);
+      }
+
       renderer.render(scene, camera);
     }
 

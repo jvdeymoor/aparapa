@@ -311,19 +311,27 @@
     const terrainChunks = new Map();
     const structureChunks = new Map();
     const BUILDING_MATERIALS = {
-      walls: [
-        new THREE.MeshStandardMaterial({ color: 0xcaa56a, roughness: 1 }),
-        new THREE.MeshStandardMaterial({ color: 0xb9784d, roughness: 1 }),
-        new THREE.MeshStandardMaterial({ color: 0xa8a08b, roughness: 1 })
+      facades: [
+        new THREE.MeshStandardMaterial({ color: 0x6d7378, roughness: 0.82, metalness: 0.08 }),
+        new THREE.MeshStandardMaterial({ color: 0x39444c, roughness: 0.7, metalness: 0.18 }),
+        new THREE.MeshStandardMaterial({ color: 0x8b8f8c, roughness: 0.9, metalness: 0.04 }),
+        new THREE.MeshStandardMaterial({ color: 0x26343d, roughness: 0.62, metalness: 0.24 })
       ],
-      roofs: [
-        new THREE.MeshStandardMaterial({ color: 0x714034, roughness: 1 }),
-        new THREE.MeshStandardMaterial({ color: 0x4e5e68, roughness: 1 }),
-        new THREE.MeshStandardMaterial({ color: 0x8b552e, roughness: 1 })
-      ],
-      stone: new THREE.MeshStandardMaterial({ color: 0x777871, roughness: 1 }),
-      dark: new THREE.MeshStandardMaterial({ color: 0x26343a, roughness: 1 }),
-      dirt: new THREE.MeshStandardMaterial({ color: 0x755034, roughness: 1 })
+      glass: new THREE.MeshStandardMaterial({
+        color: 0x35677a,
+        roughness: 0.28,
+        metalness: 0.32
+      }),
+      windows: new THREE.MeshStandardMaterial({
+        color: 0xffc967,
+        emissive: 0x5a3510,
+        emissiveIntensity: 0.8,
+        roughness: 0.42,
+        metalness: 0.12
+      }),
+      roof: new THREE.MeshStandardMaterial({ color: 0x1c242a, roughness: 0.65, metalness: 0.35 }),
+      concrete: new THREE.MeshStandardMaterial({ color: 0x555b5d, roughness: 1, metalness: 0.05 }),
+      dark: new THREE.MeshStandardMaterial({ color: 0x182128, roughness: 0.72, metalness: 0.22 })
     };
 
     function hash2D(x, z) {
@@ -456,134 +464,99 @@
       return Math.max(...samples) - Math.min(...samples);
     }
 
-    function addHouseDetails(group, width, wallHeight, depth) {
-      const door = new THREE.Mesh(
-        new THREE.BoxGeometry(width * 0.18, 1.05, 0.08),
-        BUILDING_MATERIALS.dark
-      );
-      door.position.set(0, 0.78, depth * 0.5 + 0.05);
-      group.add(door);
-
-      const windowMaterial = BUILDING_MATERIALS.dark;
-      for (const side of [-1, 1]) {
-        const window = new THREE.Mesh(
-          new THREE.BoxGeometry(width * 0.2, 0.55, 0.08),
-          windowMaterial
+    function addSkyscraperDetails(group, width, depth, wallHeight, variant) {
+      const bandCount = Math.max(3, Math.floor(wallHeight / 5));
+      for (let level = 1; level < bandCount; level++) {
+        const y = 0.45 + (wallHeight * level) / bandCount;
+        const band = new THREE.Mesh(
+          new THREE.BoxGeometry(width + 0.05, 0.18, depth + 0.05),
+          level % 3 === variant % 3 ? BUILDING_MATERIALS.windows : BUILDING_MATERIALS.glass
         );
-        window.position.set(side * width * 0.27, wallHeight * 0.58, depth * 0.5 + 0.05);
-        group.add(window);
+        band.position.y = y;
+        group.add(band);
       }
+
+      const frontGlass = new THREE.Mesh(
+        new THREE.BoxGeometry(width * 0.62, wallHeight * 0.82, 0.06),
+        BUILDING_MATERIALS.glass
+      );
+      frontGlass.position.set(0, 0.5 + wallHeight * 0.5, depth * 0.5 + 0.04);
+      group.add(frontGlass);
+
+      const sideGlass = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, wallHeight * 0.68, depth * 0.52),
+        BUILDING_MATERIALS.glass
+      );
+      sideGlass.position.set(width * 0.5 + 0.04, 0.5 + wallHeight * 0.53, 0);
+      group.add(sideGlass);
     }
 
-    function createBuilding(x, z, kind, scale, wallIndex, roofIndex) {
+    function createBuilding(x, z, kind, scale, facadeIndex) {
       const group = new THREE.Group();
       const baseY = heightAt(x, z);
-      const wallMaterial = BUILDING_MATERIALS.walls[wallIndex];
-      const roofMaterial = BUILDING_MATERIALS.roofs[roofIndex];
+      const facade = BUILDING_MATERIALS.facades[facadeIndex];
 
-      let width;
-      let depth;
+      const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
+      const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
       let wallHeight;
       if (kind === 0) {
-        width = (5.5 + scale * 2.2);
-        depth = (5 + scale * 2.4);
-        wallHeight = 2.4 + scale * 1.1;
+        wallHeight = 18 + scale * 18;
       } else if (kind === 1) {
-        width = (7 + scale * 3.4);
-        depth = (6 + scale * 3.8);
-        wallHeight = 3.6 + scale * 1.7;
+        wallHeight = 30 + scale * 28;
       } else if (kind === 2) {
-        width = 4.2 + scale * 1.8;
-        depth = 4.2 + scale * 1.8;
-        wallHeight = 8 + scale * 5.5;
+        wallHeight = 12 + scale * 14;
       } else {
-        width = 7 + scale * 3;
-        depth = 6 + scale * 2.5;
-        wallHeight = 2.2 + scale * 1.2;
+        wallHeight = 42 + scale * 34;
       }
 
       const foundation = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.35, 0.28, depth + 0.35),
-        BUILDING_MATERIALS.stone
+        new THREE.BoxGeometry(width + 0.7, 0.42, depth + 0.7),
+        BUILDING_MATERIALS.concrete
       );
-      foundation.position.y = 0.14;
+      foundation.position.y = 0.21;
       foundation.castShadow = true;
       foundation.receiveShadow = true;
       group.add(foundation);
 
-      if (kind < 2) {
-        const walls = new THREE.Mesh(
-          new THREE.BoxGeometry(width, wallHeight, depth),
-          wallMaterial
-        );
-        walls.position.y = 0.28 + wallHeight * 0.5;
-        walls.castShadow = true;
-        walls.receiveShadow = true;
-        group.add(walls);
+      const tower = new THREE.Mesh(
+        new THREE.BoxGeometry(width, wallHeight, depth),
+        facade
+      );
+      tower.position.y = 0.42 + wallHeight * 0.5;
+      tower.castShadow = true;
+      tower.receiveShadow = true;
+      group.add(tower);
 
-        const roofHeight = kind === 0 ? 2.1 : 2.8;
-        const roof = new THREE.Mesh(
-          new THREE.ConeGeometry(Math.max(width, depth) * 0.72, roofHeight, 4),
-          roofMaterial
-        );
-        roof.position.y = 0.28 + wallHeight + roofHeight * 0.5;
-        roof.rotation.y = Math.PI * 0.25;
-        roof.castShadow = true;
-        group.add(roof);
-        addHouseDetails(group, width, wallHeight, depth);
-      } else if (kind === 2) {
-        const tower = new THREE.Mesh(
-          new THREE.BoxGeometry(width, wallHeight, depth),
-          wallMaterial
-        );
-        tower.position.y = 0.28 + wallHeight * 0.5;
-        tower.castShadow = true;
-        tower.receiveShadow = true;
-        group.add(tower);
+      addSkyscraperDetails(group, width, depth, wallHeight, facadeIndex);
 
-        const roof = new THREE.Mesh(
-          new THREE.ConeGeometry(Math.max(width, depth) * 0.8, 2.6, 4),
-          roofMaterial
-        );
-        roof.position.y = 0.28 + wallHeight + 1.3;
-        roof.rotation.y = Math.PI * 0.25;
-        roof.castShadow = true;
-        group.add(roof);
-      } else {
-        const wallThickness = 0.42;
-        const walls = [
-          [width, wallThickness, depth, 0, wallHeight * 0.5, -depth * 0.5],
-          [width, wallThickness, depth, 0, wallHeight * 0.5, depth * 0.5],
-          [wallThickness, wallHeight, depth, -width * 0.5, wallHeight * 0.5, 0],
-          [wallThickness, wallHeight, depth, width * 0.5, wallHeight * 0.5, 0]
-        ];
-        for (let index = 0; index < walls.length; index++) {
-          if (index === 2 && scale < 0.55) continue;
-          const [sizeX, sizeY, sizeZ, px, py, pz] = walls[index];
-          const wall = new THREE.Mesh(
-            new THREE.BoxGeometry(sizeX, sizeY, sizeZ),
-            index % 2 === 0 ? BUILDING_MATERIALS.dirt : wallMaterial
-          );
-          wall.position.set(px, 0.28 + py, pz);
-          wall.castShadow = true;
-          wall.receiveShadow = true;
-          group.add(wall);
-        }
+      // Tetto piatto tecnico, senza sagome da casa.
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(width + 0.18, 0.34, depth + 0.18),
+        BUILDING_MATERIALS.roof
+      );
+      roof.position.y = 0.42 + wallHeight + 0.17;
+      roof.castShadow = true;
+      group.add(roof);
 
-        for (let index = 0; index < 3; index++) {
-          const rubble = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(0.35 + scale * 0.18, 0),
-            BUILDING_MATERIALS.stone
-          );
-          rubble.position.set(
-            (seededRandom(x, z, index + 21) - 0.5) * width * 0.7,
-            0.6,
-            (seededRandom(x, z, index + 31) - 0.5) * depth * 0.7
-          );
-          rubble.scale.y = 0.65;
-          rubble.castShadow = true;
-          group.add(rubble);
-        }
+      if (kind === 1 || kind === 3) {
+        const antenna = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.09, 0.16, 3 + scale * 3, 6),
+          BUILDING_MATERIALS.dark
+        );
+        antenna.position.y = roof.position.y + 1.7 + scale * 1.5;
+        antenna.castShadow = true;
+        group.add(antenna);
+      }
+
+      if (kind === 2) {
+        const podium = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 1.18, 3.2, depth * 1.18),
+          BUILDING_MATERIALS.concrete
+        );
+        podium.position.y = 1.6;
+        podium.castShadow = true;
+        podium.receiveShadow = true;
+        group.add(podium);
       }
 
       group.position.set(x, baseY, z);
@@ -592,37 +565,36 @@
 
     function createStructuresChunk(chunkX, chunkZ) {
       const group = new THREE.Group();
-      const count = 1 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 4);
+      const count = 10 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 7);
+      const columns = 4;
+      const rows = 4;
 
       for (let index = 0; index < count; index++) {
-        let placed = false;
-        for (let attempt = 0; attempt < 8 && !placed; attempt++) {
-          const slot = index * 11 + attempt + 1;
-          const localX = 8 + seededRandom(chunkX, chunkZ, slot) * 48;
-          const localZ = 8 + seededRandom(chunkX, chunkZ, slot + 1) * 48;
-          if (Math.abs(localX - 32) < 10 && Math.abs(localZ - 32) < 10) continue;
+        const slot = index * 11 + 1;
+        const column = index % columns;
+        const row = Math.floor(index / columns) % rows;
+        const jitterX = (seededRandom(chunkX, chunkZ, slot) - 0.5) * 4;
+        const jitterZ = (seededRandom(chunkX, chunkZ, slot + 1) - 0.5) * 4;
+        const localX = 6 + column * 15 + jitterX;
+        const localZ = 6 + row * 15 + jitterZ;
+        const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
+        const scale = 0.6 + seededRandom(chunkX, chunkZ, slot + 3) * 0.85;
+        const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
+        const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
+        const worldX = chunkX * TERRAIN.chunkSize + localX;
+        const worldZ = chunkZ * TERRAIN.chunkSize + localZ;
 
-          const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
-          const scale = 0.65 + seededRandom(chunkX, chunkZ, slot + 3) * 0.75;
-          const width = kind === 2 ? 5 + scale * 2 : 8 + scale * 4;
-          const depth = kind === 2 ? 5 + scale * 2 : 7 + scale * 4;
-          const worldX = chunkX * TERRAIN.chunkSize + localX;
-          const worldZ = chunkZ * TERRAIN.chunkSize + localZ;
+        // Una piccola tolleranza evita edifici inclinati, mantenendo però la città compatta.
+        if (groundVariation(worldX, worldZ, width, depth) > 1.2) continue;
 
-          // Evita di far galleggiare gli edifici sui pendii troppo inclinati.
-          if (groundVariation(worldX, worldZ, width, depth) > 1.2) continue;
-
-          const building = createBuilding(
-            worldX,
-            worldZ,
-            kind,
-            scale,
-            Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.walls.length),
-            Math.floor(seededRandom(chunkX, chunkZ, slot + 5) * BUILDING_MATERIALS.roofs.length)
-          );
-          group.add(building);
-          placed = true;
-        }
+        const building = createBuilding(
+          worldX,
+          worldZ,
+          kind,
+          scale,
+          Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.facades.length)
+        );
+        group.add(building);
       }
 
       scene.add(group);

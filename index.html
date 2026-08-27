@@ -1134,7 +1134,11 @@
           separation.copy(flyer.position).sub(closestPoint);
 
           if (separation.lengthSq() > 0.000001) {
-            return separation.normalize();
+            const distance = separation.length();
+            return {
+              normal: separation.multiplyScalar(1 / distance),
+              penetration: Math.max(0, flyerHitboxRadius - distance)
+            };
           }
 
           // Se il centro è dentro l'AABB, scegli la faccia con penetrazione minore.
@@ -1149,7 +1153,10 @@
           distances.sort((a, b) => a.distance - b.distance);
           const normal = new THREE.Vector3();
           normal[distances[0].axis] = distances[0].sign;
-          return normal;
+          return {
+            normal,
+            penetration: flyerHitboxRadius + distances[0].distance
+          };
         }
       }
       return null;
@@ -1192,7 +1199,6 @@
         -Math.cos(yaw) * Math.cos(pitch)
       );
 
-      const previousPosition = flyer.position.clone();
       const movementVelocity = flightDirection.clone().multiplyScalar(speed);
       flyer.position.addScaledVector(movementVelocity, delta);
       flyer.position.addScaledVector(bounceVelocity, delta);
@@ -1209,21 +1215,23 @@
       // Carica il chunk eventualmente attraversato prima di testare la collisione.
       syncTerrainChunks();
       updateFlyerHitbox();
-      const collisionNormal = findFlyerBuildingCollision();
-      if (collisionNormal) {
-        flyer.position.copy(previousPosition);
+      const collision = findFlyerBuildingCollision();
+      if (collision) {
+        // Corregge solo la penetrazione reale: il drone resta aderente alla
+        // superficie e non viene arretrato con un margine navigabile aggiuntivo.
+        flyer.position.addScaledVector(collision.normal, collision.penetration + 0.001);
 
         // L'impulso segue la normale della superficie, quindi tiene conto
-        // dell'angolo reale con cui il drone colpisce il palazzo.
+        // dell'angolo reale senza annullare l'accelerazione del pilota.
         const incomingVelocity = movementVelocity.clone().add(bounceVelocity);
-        const impactSpeed = Math.max(0, -incomingVelocity.dot(collisionNormal));
+        const impactSpeed = Math.max(0, -incomingVelocity.dot(collision.normal));
         const reboundSpeed = Math.min(6.5, Math.max(2.8, impactSpeed * 0.72));
-        bounceVelocity.copy(collisionNormal).multiplyScalar(reboundSpeed);
+        bounceVelocity.copy(collision.normal).multiplyScalar(reboundSpeed);
         flyer.position.addScaledVector(bounceVelocity, delta);
 
         // Tilt elastico di 3–7 gradi: asse Y per la deviazione laterale,
         // asse X quando l'urto avviene durante una salita/discesa.
-        const localNormal = collisionNormal.clone().applyAxisAngle(
+        const localNormal = collision.normal.clone().applyAxisAngle(
           new THREE.Vector3(0, 1, 0),
           -yaw
         );

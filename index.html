@@ -623,6 +623,15 @@
           Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.facades.length)
         );
         group.add(building);
+
+        // Debug visivo: il bordo giallo segue esattamente la hitbox reale del palazzo.
+        const hitboxHelper = new THREE.Box3Helper(building.userData.hitbox, 0xffd400);
+        hitboxHelper.material.transparent = true;
+        hitboxHelper.material.opacity = 0.78;
+        hitboxHelper.material.depthTest = false;
+        hitboxHelper.renderOrder = 19;
+        group.add(hitboxHelper);
+
         chunkHitboxes.push(building.userData.hitbox);
       }
 
@@ -633,7 +642,12 @@
 
     function disposeStructureGroup(group) {
       group.traverse(object => {
-        if (object.isMesh) object.geometry.dispose();
+        if ((object.isMesh || object.isLineSegments) && object.geometry) {
+          object.geometry.dispose();
+        }
+        if (object.isLineSegments && object.material) {
+          object.material.dispose();
+        }
       });
     }
 
@@ -833,20 +847,27 @@
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();
 
-    // Wireframe gialla sempre visibile: rappresenta la hitbox sferica reale.
-    const hitboxVisual = new THREE.Mesh(
-      new THREE.SphereGeometry(flyerHitboxRadius, 24, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xffd400,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.95,
-        depthTest: false
-      })
+    // Due soli cerchi gialli incrociati: rappresentano la hitbox sferica.
+    const hitboxMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffd400,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: false
+    });
+    const hitboxRingA = new THREE.Mesh(
+      new THREE.TorusGeometry(flyerHitboxRadius - 0.014, 0.014, 6, 40),
+      hitboxMaterial
     );
-    hitboxVisual.name = "aircraftHitbox";
-    hitboxVisual.renderOrder = 20;
-    flyer.add(hitboxVisual);
+    const hitboxRingB = new THREE.Mesh(
+      new THREE.TorusGeometry(flyerHitboxRadius - 0.014, 0.014, 6, 40),
+      hitboxMaterial
+    );
+    hitboxRingB.rotation.x = Math.PI * 0.5;
+    hitboxRingA.name = "droneHitboxRingA";
+    hitboxRingB.name = "droneHitboxRingB";
+    hitboxRingA.renderOrder = 20;
+    hitboxRingB.renderOrder = 20;
+    flyer.add(hitboxRingA, hitboxRingB);
     scene.add(flyer);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.

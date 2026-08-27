@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">6</p>
+    <p class="title">7</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -1145,15 +1145,15 @@
       if (keys.has("arrowup")) pitchInput += 1;
       if (keys.has("arrowdown")) pitchInput -= 1;
 
-      // Joystick mobile: avanti accelera, indietro oltre metà raggio
-      // disattiva l'acceleratore e attiva lo sparo da fermo.
-      const joystickShooting = joystickPointer !== null && mobileMove.y > 0.5;
+      // Joystick mobile: avanti accelera e spara, indietro oltre metà raggio
+      // disattiva l'acceleratore ma continua a sparare da fermo.
+      const joystickReverse = joystickPointer !== null && mobileMove.y > 0.5;
+      const stickShooting = joystickPointer !== null && Math.abs(mobileMove.y) > 0.5;
       if (joystickPointer !== null) {
-        throttle = joystickShooting ? 0 : 1;
+        throttle = joystickReverse ? 0 : 1;
       }
 
       shotCooldown = Math.max(0, shotCooldown - delta);
-      const stickShooting = joystickShooting;
       if ((stickShooting || keys.has(" ")) && shotCooldown <= 0) {
         shootProjectile();
         shotCooldown = 0.18;

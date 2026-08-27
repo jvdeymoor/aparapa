@@ -471,18 +471,19 @@
 
     function createAlienBuildingGeometry() {
       const data = { positions: [], normals: [], colors: [], indices: [] };
-      const levels = 8;
+      const columns = [
+        [-0.5, -0.38, [1, 1, 1]],
+        [-0.38, -0.33, [0.22, 0.28, 0.3]],
+        [-0.33, -0.08, [1, 1, 1]],
+        [-0.08, -0.03, [1, 0.68, 0.24]],
+        [-0.03, 0.23, [1, 1, 1]],
+        [0.23, 0.28, [0.22, 0.28, 0.3]],
+        [0.28, 0.5, [1, 1, 1]]
+      ];
 
-      for (let level = 0; level < levels; level++) {
-        const minY = level / levels;
-        const maxY = (level + 1) / levels;
-        const inset = level % 3 === 1 ? 0.08 : level % 3 === 2 ? 0.035 : 0;
-        const minX = -0.5 + inset;
-        const maxX = 0.5 - inset;
-        const minZ = -0.5 + inset;
-        const maxZ = 0.5 - inset;
-        const bandColor = level % 2 === 1 ? [1, 0.68, 0.24] : [1, 1, 1];
-        appendBox(data, minX, maxX, minY, maxY, minZ, maxZ, bandColor);
+      // Colonne verticali contigue: le scanalature restano dentro l’ingombro esterno.
+      for (const [minX, maxX, color] of columns) {
+        appendBox(data, minX, maxX, 0, 1, -0.5, 0.5, color);
       }
 
       const geometry = new THREE.BufferGeometry();
@@ -654,7 +655,7 @@
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-      geometry.setIndex(TERRAIN_INDEX);
+      geometry.setIndex(new THREE.BufferAttribute(TERRAIN_INDEX, 1));
       geometry.computeVertexNormals();
 
       const mesh = new THREE.Mesh(

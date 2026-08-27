@@ -837,7 +837,7 @@
       // Cerca in tutta la zona già caricata, scegliendo il punto più lontano dagli edifici.
       for (let x = -112; x <= 112; x += 8) {
         for (let z = -112; z <= 112; z += 8) {
-          const y = heightAt(x, z) + 18;
+          const y = heightAt(x, z) + 110;
           center.set(x, y, z);
           probe.setFromCenterAndSize(center, flyerHitboxSize);
           let blocked = false;
@@ -857,7 +857,7 @@
         }
       }
 
-      return best || { x: -112, y: heightAt(-112, -112) + 32, z: -112 };
+      return best || { x: -112, y: heightAt(-112, -112) + 110, z: -112 };
     }
 
     flyer = createFlyingVehicle();

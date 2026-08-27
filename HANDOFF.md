@@ -13,6 +13,7 @@
 
 - terreno procedurale a chunk, con quattro profili: pianura, leggermente mosso, scosceso e montagna;
 - profili diversi per ogni area, interpolati ai bordi per evitare scalini;
+- altezza globale regolabile tramite `TERRAIN.verticalScale`;
 - colori e superfici diversificate: prato, roccia, terra e sabbia;
 - generazione deterministica tramite seed;
 - chunk da 64×64 con 32 suddivisioni per lato;
@@ -32,7 +33,7 @@ La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset lo
 
 ## Ultima modifica
 
-I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239` e `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli e introducono i quattro profili con superfici colorate. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
+I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239`, `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7` e `575e138c2e1e974ad1d176a80daaeb581f8a5af3` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli, introducono i quattro profili con superfici colorate e il controllo globale dell’altezza. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
 
 ## Prossimi sviluppi possibili
 

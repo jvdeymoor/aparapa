@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Il mio mondo</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #fff;
+      background: #82c9f5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #82c9f5;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      touch-action: none;
+    }
+
+    #game canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .title {
+      position: absolute;
+      top: 20px;
+      left: 22px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-shadow: 0 2px 4px rgba(17, 64, 34, 0.45);
+    }
+
+    .help {
+      position: absolute;
+      right: 22px;
+      top: 20px;
+      margin: 0;
+      padding: 9px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 999px;
+      background: rgba(25, 92, 61, 0.42);
+      font-size: 0.82rem;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.92);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    }
+
+    #startScreen {
+      position: fixed;
+      z-index: 5;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: linear-gradient(rgba(19, 65, 100, 0.2), rgba(19, 65, 100, 0.38));
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    #startScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .start-card {
+      width: min(420px, 100%);
+      padding: 30px 26px 26px;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 24px;
+      background: rgba(20, 66, 79, 0.72);
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.28);
+      text-align: center;
+      backdrop-filter: blur(7px);
+    }
+
+    .start-card h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 5vw, 2.4rem);
+    }
+
+    .start-card p {
+      margin: 0 0 22px;
+      color: rgba(255, 255, 255, 0.86);
+      line-height: 1.5;
+    }
+
+    #startButton {
+      min-width: 190px;
+      padding: 14px 25px;
+      border: 0;
+      border-radius: 999px;
+      background: #f6ca35;
+      color: #173a2b;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      box-shadow: 0 5px 0 #b28612;
+    }
+
+    #startButton:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #b28612;
+    }
+
+    #touchControls {
+      display: none;
+      position: fixed;
+      z-index: 4;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    #joystick {
+      position: absolute;
+      left: 24px;
+      bottom: 28px;
+      width: 124px;
+      height: 124px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-radius: 50%;
+      background: rgba(23, 76, 72, 0.28);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    #joystickKnob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 53px;
+      height: 53px;
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      transform: translate(-50%, -50%);
+    }
+
+    #lookArea {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 58%;
+      height: 65%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .touch-label {
+      position: absolute;
+      bottom: 12px;
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    .touch-label.left {
+      left: 43px;
+    }
+
+    .touch-label.right {
+      right: 28px;
+    }
+
+    @media (pointer: coarse), (max-width: 700px) {
+      .help {
+        display: none;
+      }
+
+      .title {
+        top: 14px;
+        left: 16px;
+      }
+
+      #touchControls {
+        display: block;
+      }
+
+      .crosshair {
+        width: 8px;
+        height: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game" aria-label="Mondo 3D giocabile"></div>
+
+  <div class="hud" aria-hidden="true">
+    <p class="title">IL MIO MONDO</p>
+    <p class="help">WASD / frecce · mouse per guardarti intorno</p>
+    <div class="crosshair"></div>
+  </div>
+
+  <div id="touchControls" aria-hidden="true">
+    <div id="joystick"><div id="joystickKnob"></div></div>
+    <div id="lookArea"></div>
+    <span class="touch-label left">muovi</span>
+    <span class="touch-label right">guarda</span>
+  </div>
+
+  <section id="startScreen">
+    <div class="start-card">
+      <h1>Benvenuto nel mondo</h1>
+      <p>Una pianura tranquilla, cielo azzurro e prato verde.<br>Entra e fai un giro.</p>
+      <button id="startButton" type="button">INIZIA</button>
+    </div>
+  </section>
+
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+    const game = document.getElementById("game");
+    const startScreen = document.getElementById("startScreen");
+    const startButton = document.getElementById("startButton");
+    const joystick = document.getElementById("joystick");
+    const joystickKnob = document.getElementById("joystickKnob");
+    const lookArea = document.getElementById("lookArea");
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x83c9f4);
+    scene.fog = new THREE.Fog(0x83c9f4, 48, 185);
+
+    const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.1, 300);
+    camera.position.set(0, 1.7, 8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    game.appendChild(renderer.domElement);
+
+    const ambient = new THREE.HemisphereLight(0xd9f4ff, 0x5a863e, 2.1);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xfff4d6, 3.2);
+    sun.position.set(-35, 48, 22);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -70;
+    sun.shadow.camera.right = 70;
+    sun.shadow.camera.top = 70;
+    sun.shadow.camera.bottom = -70;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 150;
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(240, 240),
+      new THREE.MeshStandardMaterial({ color: 0x4f9a48, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grass = new THREE.Mesh(
+      new THREE.PlaneGeometry(240, 240, 80, 80),
+      new THREE.MeshStandardMaterial({ color: 0x5ca94d, roughness: 1, metalness: 0 })
+    );
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.y = 0.012;
+    grass.receiveShadow = true;
+    scene.add(grass);
+
+    const horizon = new THREE.Mesh(
+      new THREE.RingGeometry(75, 118, 64),
+      new THREE.MeshBasicMaterial({ color: 0x39753a, side: THREE.DoubleSide })
+    );
+    horizon.rotation.x = -Math.PI / 2;
+    horizon.position.y = -0.02;
+    scene.add(horizon);
+
+    function createTree(x, z, scale = 1) {
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18 * scale, 0.24 * scale, 1.8 * scale, 8),
+        new THREE.MeshStandardMaterial({ color: 0x70492e, roughness: 1 })
+      );
+      trunk.position.y = 0.9 * scale;
+      trunk.castShadow = true;
+      tree.add(trunk);
+
+      const leaves = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(1.2 * scale, 1),
+        new THREE.MeshStandardMaterial({ color: 0x2d7e3c, roughness: 1 })
+      );
+      leaves.position.y = 2.25 * scale;
+      leaves.castShadow = true;
+      tree.add(leaves);
+      tree.position.set(x, 0, z);
+      scene.add(tree);
+    }
+
+    createTree(-18, -29, 1.7);
+    createTree(21, -36, 2.1);
+    createTree(-32, -52, 2.7);
+    createTree(34, -66, 3.1);
+    createTree(-55, -84, 3.8);
+    createTree(61, -94, 4.2);
+
+    function createCloud(x, y, z, scale = 1) {
+      const cloud = new THREE.Group();
+      const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.84 });
+      const parts = [
+        [-1.5, 0, 0, 1.25],
+        [0, 0.25, 0, 1.6],
+        [1.55, 0, 0.1, 1.1],
+        [0.65, -0.15, 0.35, 1.25]
+      ];
+      for (const [px, py, pz, size] of parts) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(size * scale, 16, 12), material);
+        puff.position.set(px * scale, py * scale, pz * scale);
+        cloud.add(puff);
+      }
+      cloud.position.set(x, y, z);
+      scene.add(cloud);
+    }
+
+    createCloud(-27, 21, -70, 2.2);
+    createCloud(32, 25, -105, 2.7);
+    createCloud(2, 30, -145, 3.2);
+
+    const keys = new Set();
+    let yaw = 0;
+    let pitch = 0;
+    let started = false;
+    const clock = new THREE.Clock();
+    const mobileMove = { x: 0, y: 0 };
+    let joystickPointer = null;
+    let lookPointer = null;
+    let previousLookX = 0;
+    let previousLookY = 0;
+
+    function beginGame() {
+      started = true;
+      startScreen.classList.add("hidden");
+      if (matchMedia("(pointer: fine)").matches && document.pointerLockElement !== renderer.domElement) {
+        renderer.domElement.requestPointerLock?.();
+      }
+    }
+
+    startButton.addEventListener("click", beginGame);
+    renderer.domElement.addEventListener("click", () => {
+      if (!started) beginGame();
+    });
+
+    addEventListener("keydown", event => {
+      keys.add(event.key.toLowerCase());
+      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+      }
+    });
+    addEventListener("keyup", event => keys.delete(event.key.toLowerCase()));
+
+    addEventListener("mousemove", event => {
+      if (document.pointerLockElement !== renderer.domElement || !started) return;
+      yaw -= event.movementX * 0.0022;
+      pitch -= event.movementY * 0.0022;
+      pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
+    });
+
+    renderer.domElement.addEventListener("pointerdown", event => {
+      if (started && matchMedia("(pointer: fine)").matches) renderer.domElement.setPointerCapture(event.pointerId);
+    });
+
+    function updateJoystick(event) {
+      const rect = joystick.getBoundingClientRect();
+      const radius = rect.width * 0.5;
+      let dx = event.clientX - (rect.left + radius);
+      let dy = event.clientY - (rect.top + radius);
+      const distance = Math.hypot(dx, dy);
+      if (distance > radius) {
+        dx = dx / distance * radius;
+        dy = dy / distance * radius;
+      }
+      mobileMove.x = dx / radius;
+      mobileMove.y = dy / radius;
+      joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    }
+
+    function resetJoystick() {
+      joystickPointer = null;
+      mobileMove.x = 0;
+      mobileMove.y = 0;
+      joystickKnob.style.transform = "translate(-50%, -50%)";
+    }
+
+    joystick.addEventListener("pointerdown", event => {
+      if (!started) beginGame();
+      joystickPointer = event.pointerId;
+      joystick.setPointerCapture(event.pointerId);
+      updateJoystick(event);
+    });
+    joystick.addEventListener("pointermove", event => {
+      if (event.pointerId === joystickPointer) updateJoystick(event);
+    });
+    joystick.addEventListener("pointerup", resetJoystick);
+    joystick.addEventListener("pointercancel", resetJoystick);
+
+    lookArea.addEventListener("pointerdown", event => {
+      if (!started) beginGame();
+      lookPointer = event.pointerId;
+      previousLookX = event.clientX;
+      previousLookY = event.clientY;
+      lookArea.setPointerCapture(event.pointerId);
+    });
+    lookArea.addEventListener("pointermove", event => {
+      if (event.pointerId !== lookPointer) return;
+      yaw -= (event.clientX - previousLookX) * 0.009;
+      pitch -= (event.clientY - previousLookY) * 0.009;
+      pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
+      previousLookX = event.clientX;
+      previousLookY = event.clientY;
+    });
+    function stopLooking(event) {
+      if (event.pointerId === lookPointer) lookPointer = null;
+    }
+    lookArea.addEventListener("pointerup", stopLooking);
+    lookArea.addEventListener("pointercancel", stopLooking);
+
+    function movePlayer(delta) {
+      if (!started) return;
+
+      let forward = 0;
+      let side = 0;
+      if (keys.has("w") || keys.has("arrowup")) forward += 1;
+      if (keys.has("s") || keys.has("arrowdown")) forward -= 1;
+      if (keys.has("a") || keys.has("arrowleft")) side -= 1;
+      if (keys.has("d") || keys.has("arrowright")) side += 1;
+      if (Math.abs(mobileMove.x) > 0.05 || Math.abs(mobileMove.y) > 0.05) {
+        side = mobileMove.x;
+        forward = -mobileMove.y;
+      }
+
+      const length = Math.hypot(forward, side);
+      if (length > 1) {
+        forward /= length;
+        side /= length;
+      }
+
+      const speed = keys.has("shift") ? 12 : 7;
+      const distance = speed * delta;
+      const forwardX = -Math.sin(yaw);
+      const forwardZ = -Math.cos(yaw);
+      const rightX = Math.cos(yaw);
+      const rightZ = -Math.sin(yaw);
+      camera.position.x += (forwardX * forward + rightX * side) * distance;
+      camera.position.z += (forwardZ * forward + rightZ * side) * distance;
+      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -108, 108);
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -108, 108);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+      movePlayer(delta);
+      camera.rotation.order = "YXZ";
+      camera.rotation.y = yaw;
+      camera.rotation.x = pitch;
+      renderer.render(scene, camera);
+    }
+
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>

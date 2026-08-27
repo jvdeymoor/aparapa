@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">9</p>
+    <p class="title">10</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -934,9 +934,9 @@
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();
 
-    // Si gioca sempre in prima persona: il modello resta nascosto,
-    // mentre la hitbox continua a gestire collisioni e rimbalzi.
-    flyer.visible = false;
+    // Il modello resta visibile davanti alla camera per poterlo vedere in gioco;
+    // la hitbox fisica continua a usare il nucleo sferico del drone.
+    flyer.visible = true;
     scene.add(flyer);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
@@ -1315,10 +1315,13 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // Prima persona fissa: la camera coincide con il centro della sfera.
-        camera.position.copy(flyer.position);
-        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 8);
-        cameraLookTarget.y += 0.1;
+        // Il drone è appena davanti alla camera, così il modello resta visibile
+        // durante il volo senza cambiare la sua posizione o la sua hitbox.
+        cameraPosition.set(0, 0.42, 1.15).applyQuaternion(flyer.quaternion);
+        cameraPosition.add(flyer.position);
+        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.4);
+        cameraLookTarget.y += 0.05;
+        camera.position.copy(cameraPosition);
         camera.lookAt(cameraLookTarget);
       }
 

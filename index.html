@@ -224,8 +224,8 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">16</p>
-    <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
+    <p class="title">IL MIO MONDO</p>
+    <p class="help">WASD · mouse / swipe per guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
 
@@ -262,7 +262,7 @@
     camera.position.set(0, 1.7, 8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.setSize(innerWidth, innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -275,7 +275,7 @@
     const sun = new THREE.DirectionalLight(0xfff4d6, 3.2);
     sun.position.set(-35, 48, 22);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.camera.left = -70;
     sun.shadow.camera.right = 70;
     sun.shadow.camera.top = 70;
@@ -284,68 +284,78 @@
     sun.shadow.camera.far = 150;
     scene.add(sun);
 
-    // Terreno procedurale a chunk: l'altezza dipende sempre dalle coordinate globali.
-    // Questo mantiene i bordi dei quadranti coincidenti, come nel vecchio sistema Java,
-    // senza dover correggere manualmente le cuciture tra un quadrante e l'altro.
-    // Terreno procedurale a chunk: l'altezza dipende dalle coordinate globali.
-    // I profili vengono interpolati tra i vertici della griglia dei chunk, così
-    // ogni area ha caratteristiche diverse senza creare scalini ai bordi.
+    // Mondo: città piatta al centro, cintura montagnosa senza edifici e limite invisibile.
     const TERRAIN = {
       chunkSize: 64,
       segments: 32,
-      loadRadius: 2,
-      verticalScale: 0.2,
-      seed: 270827
+      loadRadius: 2
     };
-    const TERRAIN_PROFILES = [
-      { name: "pianura", amplitude: 0.55, detail: 0.12, ridge: 0.02, grass: 0x6dbb5a },
-      { name: "leggermente mosso", amplitude: 2.5, detail: 0.55, ridge: 0.18, grass: 0x5ba64d },
-      { name: "scosceso", amplitude: 5.4, detail: 1.15, ridge: 1.2, grass: 0x4a8d43 },
-      { name: "montagna", amplitude: 9.5, detail: 1.8, ridge: 3.7, grass: 0x668a60 }
-    ];
+    const WORLD_HALF_SIZE = 160;
+    const CITY_HALF_SIZE = 96;
+    const MOUNTAIN_BELT_SIZE = WORLD_HALF_SIZE - CITY_HALF_SIZE;
+    const MOUNTAIN_HEIGHT = 38;
+    const MAX_BUILDINGS = 300;
+
     const terrainChunks = new Map();
     const structureChunks = new Map();
     const buildingHitboxes = new Map();
     const flyerHitboxRadius = 0.38;
     const projectiles = [];
+    const laserPool = [];
+    const LASER_GEOMETRY = new THREE.BoxGeometry(0.14, 0.14, 1.6);
+    const LASER_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xffd45c });
+    const LASER_FORWARD = new THREE.Vector3(0, 0, 1);
+    const LASER_HITBOX_SIZE = new THREE.Vector3(0.22, 0.22, 1.6);
+    const LASER_SPEED = 42;
+    const LASER_LIFETIME = 2.2;
+    const MAX_ACTIVE_LASERS = 32;
+    let activeBuildingCount = 0;
+    let loadedCenterX = null;
+    let loadedCenterZ = null;
     let shotCooldown = 0;
     let flyer = null;
+
+    const TERRAIN_COLORS = {
+      asphalt: new THREE.Color(0x4b4f50),
+      gravel: new THREE.Color(0x9a958c),
+      dirt: new THREE.Color(0x76523b),
+      concrete: new THREE.Color(0x858887),
+      grass: new THREE.Color(0x5d934e),
+      rock: new THREE.Color(0x6f7472)
+    };
+    const terrainColorScratch = new THREE.Color();
+
     const BUILDING_MATERIALS = {
       facades: [
-        new THREE.MeshStandardMaterial({ color: 0x6d7378, roughness: 0.82, metalness: 0.08 }),
-        new THREE.MeshStandardMaterial({ color: 0x39444c, roughness: 0.7, metalness: 0.18 }),
-        new THREE.MeshStandardMaterial({ color: 0x8b8f8c, roughness: 0.9, metalness: 0.04 }),
-        new THREE.MeshStandardMaterial({ color: 0x26343d, roughness: 0.62, metalness: 0.24 })
-      ],
-      glass: new THREE.MeshStandardMaterial({
-        color: 0x35677a,
-        roughness: 0.28,
-        metalness: 0.32
-      }),
-      windows: new THREE.MeshStandardMaterial({
-        color: 0xffc967,
-        emissive: 0x5a3510,
-        emissiveIntensity: 0.8,
-        roughness: 0.42,
-        metalness: 0.12
-      }),
-      roof: new THREE.MeshStandardMaterial({ color: 0x1c242a, roughness: 0.65, metalness: 0.35 }),
-      concrete: new THREE.MeshStandardMaterial({ color: 0x555b5d, roughness: 1, metalness: 0.05 }),
-      dark: new THREE.MeshStandardMaterial({ color: 0x182128, roughness: 0.72, metalness: 0.22 })
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          vertexColors: true,
+          roughness: 0.84,
+          metalness: 0.08
+        }),
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          vertexColors: true,
+          roughness: 0.72,
+          metalness: 0.16
+        }),
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          vertexColors: true,
+          roughness: 0.9,
+          metalness: 0.04
+        }),
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          vertexColors: true,
+          roughness: 0.62,
+          metalness: 0.22
+        })
+      ]
     };
 
-    // Le linee di debug sono indipendenti: i materiali dei palazzi restano sempre opachi.
-    for (const materialGroup of Object.values(BUILDING_MATERIALS)) {
-      const materials = Array.isArray(materialGroup) ? materialGroup : [materialGroup];
-      for (const material of materials) {
-        material.transparent = false;
-        material.opacity = 1;
-        material.depthWrite = true;
-      }
-    }
-
     function hash2D(x, z) {
-      let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(TERRAIN.seed, 1442695041);
+      let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(270827, 1442695041);
       h = Math.imul(h ^ (h >>> 13), 1274126177);
       return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
     }
@@ -370,7 +380,7 @@
       return lerp(lerp(n00, n10, tx), lerp(n01, n11, tx), tz);
     }
 
-    function fractalNoise(x, z, octaves = 5) {
+    function fractalNoise(x, z, octaves = 4) {
       let sum = 0;
       let amplitude = 1;
       let frequency = 1;
@@ -384,91 +394,51 @@
       return sum / weight;
     }
 
-    function profileAtNode(chunkX, chunkZ) {
-      const choice = Math.min(
-        TERRAIN_PROFILES.length - 1,
-        Math.floor(hash2D(chunkX * 37 + 11, chunkZ * 37 - 19) * TERRAIN_PROFILES.length)
-      );
-      const source = TERRAIN_PROFILES[choice];
-      const variation = 0.84 + hash2D(chunkX * 53 - 7, chunkZ * 53 + 23) * 0.32;
-      return {
-        name: source.name,
-        amplitude: source.amplitude * variation,
-        detail: source.detail * variation,
-        ridge: source.ridge * variation,
-        grass: source.grass
-      };
-    }
-
-    function mixProfile(a, b, t) {
-      return {
-        name: t < 0.5 ? a.name : b.name,
-        amplitude: lerp(a.amplitude, b.amplitude, t),
-        detail: lerp(a.detail, b.detail, t),
-        ridge: lerp(a.ridge, b.ridge, t),
-        grass: new THREE.Color(a.grass).lerp(new THREE.Color(b.grass), t)
-      };
-    }
-
-    function terrainProfileAt(x, z) {
-      const gridX = x / TERRAIN.chunkSize;
-      const gridZ = z / TERRAIN.chunkSize;
-      const x0 = Math.floor(gridX);
-      const z0 = Math.floor(gridZ);
-      const tx = smooth(gridX - x0);
-      const tz = smooth(gridZ - z0);
-      const p00 = profileAtNode(x0, z0);
-      const p10 = profileAtNode(x0 + 1, z0);
-      const p01 = profileAtNode(x0, z0 + 1);
-      const p11 = profileAtNode(x0 + 1, z0 + 1);
-      const px0 = mixProfile(p00, p10, tx);
-      const px1 = mixProfile(p01, p11, tx);
-      return mixProfile(px0, px1, tz);
+    function mountainFactorAt(x, z) {
+      const distanceFromCity = Math.max(Math.abs(x), Math.abs(z)) - CITY_HALF_SIZE;
+      return smooth(THREE.MathUtils.clamp(distanceFromCity / MOUNTAIN_BELT_SIZE, 0, 1));
     }
 
     function heightAt(x, z) {
-      const profile = terrainProfileAt(x, z);
-      const broad = fractalNoise(x * 0.012, z * 0.012, 5);
-      const detail = fractalNoise(x * 0.045 + 17.3, z * 0.045 - 9.1, 4);
-      const ridgeNoise = fractalNoise(x * 0.02 - 41.7, z * 0.02 + 28.4, 4);
+      const mountainFactor = mountainFactorAt(x, z);
+      if (mountainFactor === 0) return 0;
+
+      const broad = fractalNoise(x * 0.018, z * 0.018, 4);
+      const detail = fractalNoise(x * 0.07 + 17.3, z * 0.07 - 9.1, 3);
+      const ridgeNoise = fractalNoise(x * 0.032 - 41.7, z * 0.032 + 28.4, 3);
       const ridge = 1 - Math.abs(ridgeNoise * 2 - 1);
-      const baseHeight = (broad - 0.5) * profile.amplitude
-        + (detail - 0.5) * profile.detail
-        + (ridge - 0.5) * profile.ridge;
-      return baseHeight * TERRAIN.verticalScale;
+      const terrainShape = 0.6
+        + (broad - 0.5) * 0.55
+        + (detail - 0.5) * 0.25
+        + ridge * 0.35;
+      return mountainFactor * Math.max(0, terrainShape) * MOUNTAIN_HEIGHT;
     }
 
-    function terrainColor(height, slope, x, z) {
-      // Superficie urbana: l'asfalto è dominante, con chiazze determinate
-      // sempre dalle coordinate globali per restare identica quando il chunk viene ricreato.
-      const asphalt = new THREE.Color(0x4b4f50);
-      const gravel = new THREE.Color(0x9a958c);
-      const dirt = new THREE.Color(0x76523b);
-      const concrete = new THREE.Color(0x858887);
-      const grass = new THREE.Color(0x6d874f);
+    function terrainColor(slope, x, z) {
+      const mountainFactor = mountainFactorAt(x, z);
       const patch = valueNoise(x * 0.035 + 41, z * 0.035 - 17);
       const detail = valueNoise(x * 0.13 - 83, z * 0.13 + 29);
-      const variation = (detail - 0.5) * 0.12;
       let color;
 
-      if (slope > 1.15) {
-        color = concrete;
-      } else if (patch < 0.5) {
-        color = asphalt;
-      } else if (patch < 0.72) {
-        color = gravel;
-      } else if (patch < 0.9) {
-        color = dirt;
-      } else if (patch < 0.965) {
-        color = concrete;
+      if (mountainFactor < 0.02) {
+        if (patch < 0.5) color = TERRAIN_COLORS.asphalt;
+        else if (patch < 0.72) color = TERRAIN_COLORS.gravel;
+        else if (patch < 0.9) color = TERRAIN_COLORS.dirt;
+        else if (patch < 0.965) color = TERRAIN_COLORS.concrete;
+        else color = TERRAIN_COLORS.grass;
+      } else if (slope > 0.18 || mountainFactor > 0.72) {
+        color = TERRAIN_COLORS.rock;
+      } else if (patch < 0.58) {
+        color = TERRAIN_COLORS.grass;
+      } else if (patch < 0.84) {
+        color = TERRAIN_COLORS.dirt;
       } else {
-        // Erba rara: resta una presenza secondaria nell'ambiente urbano.
-        color = grass;
+        color = TERRAIN_COLORS.rock;
       }
 
-      color = color.clone();
-      color.offsetHSL(0, 0, variation);
-      return color;
+      terrainColorScratch.copy(color);
+      terrainColorScratch.offsetHSL(0, 0, (detail - 0.5) * 0.12);
+      return terrainColorScratch;
     }
 
     function seededRandom(chunkX, chunkZ, slot) {
@@ -478,182 +448,159 @@
       );
     }
 
-    function groundVariation(x, z, width, depth) {
-      const samples = [
-        heightAt(x - width * 0.45, z - depth * 0.45),
-        heightAt(x + width * 0.45, z - depth * 0.45),
-        heightAt(x - width * 0.45, z + depth * 0.45),
-        heightAt(x + width * 0.45, z + depth * 0.45)
+    function appendBox(data, minX, maxX, minY, maxY, minZ, maxZ, color) {
+      const faces = [
+        { normal: [0, 0, 1], corners: [[minX, minY, maxZ], [maxX, minY, maxZ], [maxX, maxY, maxZ], [minX, maxY, maxZ]] },
+        { normal: [0, 0, -1], corners: [[maxX, minY, minZ], [minX, minY, minZ], [minX, maxY, minZ], [maxX, maxY, minZ]] },
+        { normal: [1, 0, 0], corners: [[maxX, minY, maxZ], [maxX, minY, minZ], [maxX, maxY, minZ], [maxX, maxY, maxZ]] },
+        { normal: [-1, 0, 0], corners: [[minX, minY, minZ], [minX, minY, maxZ], [minX, maxY, maxZ], [minX, maxY, minZ]] },
+        { normal: [0, 1, 0], corners: [[minX, maxY, maxZ], [maxX, maxY, maxZ], [maxX, maxY, minZ], [minX, maxY, minZ]] },
+        { normal: [0, -1, 0], corners: [[minX, minY, minZ], [maxX, minY, minZ], [maxX, minY, maxZ], [minX, minY, maxZ]] }
       ];
-      return Math.max(...samples) - Math.min(...samples);
+
+      for (const face of faces) {
+        const base = data.positions.length / 3;
+        for (const [x, y, z] of face.corners) {
+          data.positions.push(x, y, z);
+          data.normals.push(...face.normal);
+          data.colors.push(...color);
+        }
+        data.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      }
     }
 
-    function addSkyscraperDetails(group, width, depth, wallHeight, variant) {
-      const bandCount = Math.max(3, Math.floor(wallHeight / 5));
-      for (let level = 1; level < bandCount; level++) {
-        const y = 0.45 + (wallHeight * level) / bandCount;
-        const band = new THREE.Mesh(
-          new THREE.BoxGeometry(width + 0.05, 0.18, depth + 0.05),
-          level % 3 === variant % 3 ? BUILDING_MATERIALS.windows : BUILDING_MATERIALS.glass
-        );
-        band.position.y = y;
-        group.add(band);
+    function createAlienBuildingGeometry() {
+      const data = { positions: [], normals: [], colors: [], indices: [] };
+      const levels = 8;
+
+      for (let level = 0; level < levels; level++) {
+        const minY = level / levels;
+        const maxY = (level + 1) / levels;
+        const inset = level % 3 === 1 ? 0.08 : level % 3 === 2 ? 0.035 : 0;
+        const minX = -0.5 + inset;
+        const maxX = 0.5 - inset;
+        const minZ = -0.5 + inset;
+        const maxZ = 0.5 - inset;
+        const bandColor = level % 2 === 1 ? [1, 0.68, 0.24] : [1, 1, 1];
+        appendBox(data, minX, maxX, minY, maxY, minZ, maxZ, bandColor);
       }
 
-      const frontGlass = new THREE.Mesh(
-        new THREE.BoxGeometry(width * 0.62, wallHeight * 0.82, 0.06),
-        BUILDING_MATERIALS.glass
-      );
-      frontGlass.position.set(0, 0.5 + wallHeight * 0.5, depth * 0.5 + 0.04);
-      group.add(frontGlass);
-
-      const sideGlass = new THREE.Mesh(
-        new THREE.BoxGeometry(0.06, wallHeight * 0.68, depth * 0.52),
-        BUILDING_MATERIALS.glass
-      );
-      sideGlass.position.set(width * 0.5 + 0.04, 0.5 + wallHeight * 0.53, 0);
-      group.add(sideGlass);
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
+      geometry.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
+      geometry.setAttribute("color", new THREE.Float32BufferAttribute(data.colors, 3));
+      geometry.setIndex(data.indices);
+      return geometry;
     }
+
+    const BUILDING_GEOMETRY = createAlienBuildingGeometry();
 
     function createBuilding(x, z, kind, scale, facadeIndex) {
-      const group = new THREE.Group();
-      const baseY = heightAt(x, z);
-      const facade = BUILDING_MATERIALS.facades[facadeIndex];
-
       const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
       const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
-      let wallHeight;
-      if (kind === 0) {
-        wallHeight = 18 + scale * 18;
-      } else if (kind === 1) {
-        wallHeight = 30 + scale * 28;
-      } else if (kind === 2) {
-        wallHeight = 12 + scale * 14;
-      } else {
-        wallHeight = 42 + scale * 34;
-      }
+      const wallHeight = kind === 0
+        ? 18 + scale * 18
+        : kind === 1
+          ? 30 + scale * 28
+          : kind === 2
+            ? 12 + scale * 14
+            : 42 + scale * 34;
+      const baseY = heightAt(x, z);
+      const building = new THREE.Mesh(BUILDING_GEOMETRY, BUILDING_MATERIALS.facades[facadeIndex]);
 
-      // Fondamenta profonde: penetrano nel terreno e impediscono l'effetto edificio sospeso.
-      const foundationDepth = 2.6;
-      const foundationTop = 0.18;
-      const foundation = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.9, foundationDepth, depth + 0.9),
-        BUILDING_MATERIALS.concrete
+      building.position.set(x, baseY, z);
+      building.scale.set(width, wallHeight, depth);
+      building.castShadow = true;
+      building.receiveShadow = true;
+
+      building.userData.hitbox = new THREE.Box3(
+        new THREE.Vector3(x - width * 0.5, baseY, z - depth * 0.5),
+        new THREE.Vector3(x + width * 0.5, baseY + wallHeight, z + depth * 0.5)
       );
-      foundation.position.y = foundationTop - foundationDepth * 0.5;
-      foundation.castShadow = true;
-      foundation.receiveShadow = true;
-      group.add(foundation);
-
-      const tower = new THREE.Mesh(
-        new THREE.BoxGeometry(width, wallHeight, depth),
-        facade
-      );
-      tower.position.y = foundationTop + wallHeight * 0.5;
-      tower.castShadow = true;
-      tower.receiveShadow = true;
-      group.add(tower);
-
-      addSkyscraperDetails(group, width, depth, wallHeight, facadeIndex);
-
-      // Tetto piatto tecnico, senza sagome da casa.
-      const roof = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.18, 0.34, depth + 0.18),
-        BUILDING_MATERIALS.roof
-      );
-      roof.position.y = foundationTop + wallHeight + 0.17;
-      roof.castShadow = true;
-      group.add(roof);
-
-      if (kind === 1 || kind === 3) {
-        const antenna = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.09, 0.16, 3 + scale * 3, 6),
-          BUILDING_MATERIALS.dark
-        );
-        antenna.position.y = roof.position.y + 1.7 + scale * 1.5;
-        antenna.castShadow = true;
-        group.add(antenna);
-      }
-
-      if (kind === 2) {
-        const podium = new THREE.Mesh(
-          new THREE.BoxGeometry(width * 1.18, 3.2, depth * 1.18),
-          BUILDING_MATERIALS.concrete
-        );
-        podium.position.y = foundationTop + 1.6;
-        podium.castShadow = true;
-        podium.receiveShadow = true;
-        group.add(podium);
-      }
-
-      group.position.set(x, baseY, z);
-
-      // La hitbox aderisce al corpo lungo della torre: esclude la fondazione
-      // più larga e parte dal piano di appoggio del corpo, senza lasciare gap.
-      group.updateMatrixWorld(true);
-      const bodyBottom = baseY + foundationTop;
-      const bodyTop = bodyBottom + wallHeight;
-      const roofTop = bodyTop + 0.34;
-      const hitboxTop = roofTop + 0.08;
-      group.userData.hitbox = new THREE.Box3(
-        new THREE.Vector3(x - width * 0.5, bodyBottom, z - depth * 0.5),
-        new THREE.Vector3(x + width * 0.5, hitboxTop, z + depth * 0.5)
-      );
-      return group;
+      return building;
     }
 
     function createStructuresChunk(chunkX, chunkZ) {
       const group = new THREE.Group();
       const chunkHitboxes = [];
-      const count = 10 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 7);
-      const columns = 4;
-      const rows = 4;
+      const chunkMinX = chunkX * TERRAIN.chunkSize;
+      const chunkMaxX = chunkMinX + TERRAIN.chunkSize;
+      const chunkMinZ = chunkZ * TERRAIN.chunkSize;
+      const chunkMaxZ = chunkMinZ + TERRAIN.chunkSize;
 
-      for (let index = 0; index < count; index++) {
-        const slot = index * 11 + 1;
-        const column = index % columns;
-        const row = Math.floor(index / columns) % rows;
-        const jitterX = (seededRandom(chunkX, chunkZ, slot) - 0.5) * 4;
-        const jitterZ = (seededRandom(chunkX, chunkZ, slot + 1) - 0.5) * 4;
-        const localX = 6 + column * 15 + jitterX;
-        const localZ = 6 + row * 15 + jitterZ;
-        const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
-        const scale = 0.6 + seededRandom(chunkX, chunkZ, slot + 3) * 0.85;
-        const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
-        const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
-        const worldX = chunkX * TERRAIN.chunkSize + localX;
-        const worldZ = chunkZ * TERRAIN.chunkSize + localZ;
+      if (
+        chunkMaxX > -CITY_HALF_SIZE
+        && chunkMinX < CITY_HALF_SIZE
+        && chunkMaxZ > -CITY_HALF_SIZE
+        && chunkMinZ < CITY_HALF_SIZE
+      ) {
+        const count = 10 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 7);
+        const columns = 4;
+        const rows = 4;
 
-        // Una piccola tolleranza evita edifici inclinati, mantenendo però la città compatta.
-        if (groundVariation(worldX, worldZ, width, depth) > 1.2) continue;
+        for (let index = 0; index < count; index++) {
+          if (activeBuildingCount >= MAX_BUILDINGS) break;
 
-        const building = createBuilding(
-          worldX,
-          worldZ,
-          kind,
-          scale,
-          Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.facades.length)
-        );
-        group.add(building);
+          const slot = index * 11 + 1;
+          const column = index % columns;
+          const row = Math.floor(index / columns) % rows;
+          const jitterX = (seededRandom(chunkX, chunkZ, slot) - 0.5) * 4;
+          const jitterZ = (seededRandom(chunkX, chunkZ, slot + 1) - 0.5) * 4;
+          const localX = 6 + column * 15 + jitterX;
+          const localZ = 6 + row * 15 + jitterZ;
+          const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
+          const scale = 0.6 + seededRandom(chunkX, chunkZ, slot + 3) * 0.85;
+          const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
+          const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
+          const worldX = chunkX * TERRAIN.chunkSize + localX;
+          const worldZ = chunkZ * TERRAIN.chunkSize + localZ;
 
-        chunkHitboxes.push(building.userData.hitbox);
+          // I palazzi restano nel blocco piatto centrale; la cintura esterna è libera.
+          if (
+            Math.abs(worldX) + width * 0.5 > CITY_HALF_SIZE
+            || Math.abs(worldZ) + depth * 0.5 > CITY_HALF_SIZE
+          ) {
+            continue;
+          }
+
+          const building = createBuilding(
+            worldX,
+            worldZ,
+            kind,
+            scale,
+            Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.facades.length)
+          );
+          group.add(building);
+          chunkHitboxes.push(building.userData.hitbox);
+          activeBuildingCount++;
+        }
       }
 
+      group.userData.buildingCount = chunkHitboxes.length;
       buildingHitboxes.set(chunkKey(chunkX, chunkZ), chunkHitboxes);
       scene.add(group);
       return group;
     }
 
     function disposeStructureGroup(group) {
-      group.traverse(object => {
-        if ((object.isMesh || object.isLineSegments) && object.geometry) {
-          object.geometry.dispose();
-        }
-        if (object.isLineSegments && object.material) {
-          object.material.dispose();
-        }
-      });
+      activeBuildingCount = Math.max(0, activeBuildingCount - (group.userData.buildingCount || 0));
+      group.clear();
     }
+
+    const TERRAIN_INDEX = (() => {
+      const indices = [];
+      const rowStride = TERRAIN.segments + 1;
+      for (let row = 0; row < TERRAIN.segments; row++) {
+        for (let column = 0; column < TERRAIN.segments; column++) {
+          const a = row * rowStride + column;
+          const b = a + 1;
+          const d = (row + 1) * rowStride + column;
+          const c = d + 1;
+          indices.push(a, d, b, b, d, c);
+        }
+      }
+      return new Uint32Array(indices);
+    })();
 
     function createTerrainChunk(chunkX, chunkZ) {
       const size = TERRAIN.chunkSize;
@@ -661,42 +608,53 @@
       const half = size * 0.5;
       const worldOriginX = chunkX * size + half;
       const worldOriginZ = chunkZ * size + half;
-      const positions = [];
-      const colors = [];
-      const indices = [];
+      const rowStride = segments + 1;
+      const vertexCount = rowStride * rowStride;
+      const positions = new Float32Array(vertexCount * 3);
+      const colors = new Float32Array(vertexCount * 3);
+      const heights = new Float32Array(vertexCount);
       const step = size / segments;
 
       for (let row = 0; row <= segments; row++) {
         for (let column = 0; column <= segments; column++) {
+          const vertexIndex = row * rowStride + column;
           const localX = -half + column * step;
           const localZ = -half + row * step;
           const worldX = worldOriginX + localX;
           const worldZ = worldOriginZ + localZ;
           const height = heightAt(worldX, worldZ);
-          const slope = Math.max(
-            Math.abs(heightAt(worldX + 1, worldZ) - heightAt(worldX - 1, worldZ)),
-            Math.abs(heightAt(worldX, worldZ + 1) - heightAt(worldX, worldZ - 1))
-          );
-          const color = terrainColor(height, slope, worldX, worldZ);
-          positions.push(localX, height, localZ);
-          colors.push(color.r, color.g, color.b);
+
+          heights[vertexIndex] = height;
+          positions[vertexIndex * 3] = localX;
+          positions[vertexIndex * 3 + 1] = height;
+          positions[vertexIndex * 3 + 2] = localZ;
         }
       }
 
-      for (let row = 0; row < segments; row++) {
-        for (let column = 0; column < segments; column++) {
-          const a = row * (segments + 1) + column;
-          const b = a + 1;
-          const d = (row + 1) * (segments + 1) + column;
-          const c = d + 1;
-          indices.push(a, d, b, b, d, c);
+      for (let row = 0; row <= segments; row++) {
+        for (let column = 0; column <= segments; column++) {
+          const vertexIndex = row * rowStride + column;
+          const left = heights[row * rowStride + Math.max(0, column - 1)];
+          const right = heights[row * rowStride + Math.min(segments, column + 1)];
+          const previousRow = Math.max(0, row - 1) * rowStride + column;
+          const nextRow = Math.min(segments, row + 1) * rowStride + column;
+          const slopeX = Math.abs(right - left) / (column === 0 || column === segments ? step : step * 2);
+          const slopeZ = Math.abs(heights[nextRow] - heights[previousRow])
+            / (row === 0 || row === segments ? step : step * 2);
+          const worldX = worldOriginX - half + column * step;
+          const worldZ = worldOriginZ - half + row * step;
+          const color = terrainColor(Math.max(slopeX, slopeZ), worldX, worldZ);
+
+          colors[vertexIndex * 3] = color.r;
+          colors[vertexIndex * 3 + 1] = color.g;
+          colors[vertexIndex * 3 + 2] = color.b;
         }
       }
 
       const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-      geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-      geometry.setIndex(indices);
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geometry.setIndex(TERRAIN_INDEX);
       geometry.computeVertexNormals();
 
       const mesh = new THREE.Mesh(
@@ -722,14 +680,17 @@
       const focusZ = flyer ? flyer.position.z : camera.position.z;
       const centerX = Math.floor(focusX / TERRAIN.chunkSize);
       const centerZ = Math.floor(focusZ / TERRAIN.chunkSize);
-      const needed = new Set();
 
+      if (centerX === loadedCenterX && centerZ === loadedCenterZ) return;
+
+      const needed = new Set();
       for (let dz = -TERRAIN.loadRadius; dz <= TERRAIN.loadRadius; dz++) {
         for (let dx = -TERRAIN.loadRadius; dx <= TERRAIN.loadRadius; dx++) {
           const chunkX = centerX + dx;
           const chunkZ = centerZ + dz;
           const key = chunkKey(chunkX, chunkZ);
           needed.add(key);
+
           if (!terrainChunks.has(key)) {
             terrainChunks.set(key, createTerrainChunk(chunkX, chunkZ));
           }
@@ -756,6 +717,9 @@
           structureChunks.delete(key);
         }
       }
+
+      loadedCenterX = centerX;
+      loadedCenterZ = centerZ;
     }
 
     syncTerrainChunks();
@@ -778,9 +742,10 @@
       let best = null;
       let bestClearance = -Infinity;
 
-      // Cerca in tutta la zona già caricata, scegliendo il punto più lontano dagli edifici.
-      for (let x = -112; x <= 112; x += 8) {
-        for (let z = -112; z <= 112; z += 8) {
+      // Cerca il punto più libero all’interno del blocco cittadino.
+      const spawnLimit = CITY_HALF_SIZE - 16;
+      for (let x = -spawnLimit; x <= spawnLimit; x += 8) {
+        for (let z = -spawnLimit; z <= spawnLimit; z += 8) {
           const y = heightAt(x, z) + 110;
           center.set(x, y, z);
           probe.set(center, flyerHitboxRadius);
@@ -801,7 +766,7 @@
         }
       }
 
-      return best || { x: -112, y: heightAt(-112, -112) + 110, z: -112 };
+      return best || { x: 0, y: heightAt(0, 0) + 110, z: 0 };
     }
 
     // Il drone giocabile è un controller invisibile: conserva posizione, rotazione,
@@ -892,7 +857,7 @@
 
     addEventListener("keydown", event => {
       keys.add(event.key.toLowerCase());
-      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(event.key.toLowerCase())) {
+      if (["w", "a", "s", "d", "arrowup", "arrowdown", " "].includes(event.key.toLowerCase())) {
         event.preventDefault();
       }
     });
@@ -990,21 +955,31 @@
     lookArea.addEventListener("pointerup", stopLooking);
     lookArea.addEventListener("pointercancel", stopLooking);
 
-    function shootProjectile() {
-      if (!flyer) return;
+    function acquireLaser() {
+      const mesh = laserPool.pop() || new THREE.Mesh(LASER_GEOMETRY, LASER_MATERIAL);
+      mesh.visible = true;
+      scene.add(mesh);
+      return mesh;
+    }
 
-      const shot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 8, 6),
-        new THREE.MeshBasicMaterial({ color: 0xffd45c })
-      );
+    function releaseLaser(mesh) {
+      mesh.visible = false;
+      scene.remove(mesh);
+      laserPool.push(mesh);
+    }
+
+    function shootProjectile() {
+      if (!flyer || projectiles.length >= MAX_ACTIVE_LASERS) return;
+
+      const shot = acquireLaser();
       shot.position.copy(flyer.position).addScaledVector(flightDirection, 1.35);
       shot.position.y += 0.1;
-      scene.add(shot);
+      shot.quaternion.setFromUnitVectors(LASER_FORWARD, flightDirection);
 
       projectiles.push({
         mesh: shot,
-        velocity: flightDirection.clone().multiplyScalar(42),
-        life: 2.2,
+        velocity: flightDirection.clone().multiplyScalar(LASER_SPEED),
+        life: LASER_LIFETIME,
         hitbox: new THREE.Box3()
       });
     }
@@ -1014,26 +989,27 @@
         const projectile = projectiles[index];
         projectile.life -= delta;
         projectile.mesh.position.addScaledVector(projectile.velocity, delta);
-        projectile.hitbox.setFromCenterAndSize(
-          projectile.mesh.position,
-          new THREE.Vector3(0.24, 0.24, 0.24)
-        );
+        projectile.hitbox.setFromCenterAndSize(projectile.mesh.position, LASER_HITBOX_SIZE);
 
         let hitBuilding = false;
-        for (const hitboxes of buildingHitboxes.values()) {
-          for (const hitbox of hitboxes) {
-            if (projectile.hitbox.intersectsBox(hitbox)) {
-              hitBuilding = true;
-              break;
+        const projectileChunkX = Math.floor(projectile.mesh.position.x / TERRAIN.chunkSize);
+        const projectileChunkZ = Math.floor(projectile.mesh.position.z / TERRAIN.chunkSize);
+
+        for (let dz = -1; dz <= 1 && !hitBuilding; dz++) {
+          for (let dx = -1; dx <= 1 && !hitBuilding; dx++) {
+            const hitboxes = buildingHitboxes.get(chunkKey(projectileChunkX + dx, projectileChunkZ + dz));
+            if (!hitboxes) continue;
+            for (const hitbox of hitboxes) {
+              if (projectile.hitbox.intersectsBox(hitbox)) {
+                hitBuilding = true;
+                break;
+              }
             }
           }
-          if (hitBuilding) break;
         }
 
         if (projectile.life <= 0 || hitBuilding) {
-          scene.remove(projectile.mesh);
-          projectile.mesh.geometry.dispose();
-          projectile.mesh.material.dispose();
+          releaseLaser(projectile.mesh);
           projectiles.splice(index, 1);
         }
       }
@@ -1089,6 +1065,26 @@
       return null;
     }
 
+    function enforceWorldBoundary() {
+      const limit = WORLD_HALF_SIZE - flyerHitboxRadius;
+
+      if (flyer.position.x < -limit) {
+        flyer.position.x = -limit;
+        bounceVelocity.x = Math.max(0, bounceVelocity.x);
+      } else if (flyer.position.x > limit) {
+        flyer.position.x = limit;
+        bounceVelocity.x = Math.min(0, bounceVelocity.x);
+      }
+
+      if (flyer.position.z < -limit) {
+        flyer.position.z = -limit;
+        bounceVelocity.z = Math.max(0, bounceVelocity.z);
+      } else if (flyer.position.z > limit) {
+        flyer.position.z = limit;
+        bounceVelocity.z = Math.min(0, bounceVelocity.z);
+      }
+    }
+
     function moveFlyer(delta) {
       if (!started || !flyer) return;
 
@@ -1140,6 +1136,9 @@
         groundHeight + 4.5,
         140
       );
+
+      // Il limite invisibile chiude l’area giocabile senza aggiungere geometria.
+      enforceWorldBoundary();
 
       // Carica il chunk eventualmente attraversato prima di testare la collisione.
       syncTerrainChunks();

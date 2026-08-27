@@ -293,6 +293,7 @@
       chunkSize: 64,
       segments: 32,
       loadRadius: 2,
+      verticalScale: 1,
       seed: 270827
     };
     const TERRAIN_PROFILES = [
@@ -391,9 +392,10 @@
       const detail = fractalNoise(x * 0.045 + 17.3, z * 0.045 - 9.1, 4);
       const ridgeNoise = fractalNoise(x * 0.02 - 41.7, z * 0.02 + 28.4, 4);
       const ridge = 1 - Math.abs(ridgeNoise * 2 - 1);
-      return (broad - 0.5) * profile.amplitude
+      const baseHeight = (broad - 0.5) * profile.amplitude
         + (detail - 0.5) * profile.detail
         + (ridge - 0.5) * profile.ridge;
+      return baseHeight * TERRAIN.verticalScale;
     }
 
     function terrainColor(height, slope, x, z) {

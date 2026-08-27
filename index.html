@@ -184,7 +184,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">19</p>
+    <p id="modificationCounter" class="counter">20</p>
     <div class="crosshair"></div>
   </div>
 
@@ -222,7 +222,7 @@
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 19;
+    const MODIFICATION_COUNT = 20;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -804,9 +804,7 @@
     const bounceVelocity = new THREE.Vector3();
     const bounceTilt = new THREE.Vector3();
     let started = false;
-    const STARTUP_PROPULSION_SPEED = 1.8;
-    const STARTUP_PROPULSION_DURATION = 1.0;
-    let startupPropulsionRemaining = 0;
+    const CONSTANT_PROPULSION_SPEED = 1.8;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
     let joystickPointer = null;
@@ -874,7 +872,6 @@
 
     function beginGame() {
       started = true;
-      startupPropulsionRemaining = STARTUP_PROPULSION_DURATION;
       startScreen.classList.add("hidden");
       enterImmersiveMode();
       placeDecorativeDrone();
@@ -1148,18 +1145,9 @@
         -Math.cos(yaw) * Math.cos(pitch)
       );
 
-      // Breve spinta di test allo spawn: rende visibile il verso di marcia
-      // senza alterare il comportamento normale dopo il primo secondo.
-      const startupPropulsion = STARTUP_PROPULSION_SPEED
-        * THREE.MathUtils.clamp(
-          startupPropulsionRemaining / STARTUP_PROPULSION_DURATION,
-          0,
-          1
-        );
-      startupPropulsionRemaining = Math.max(0, startupPropulsionRemaining - delta);
-
+      // Spinta costante per rendere sempre visibile il verso di marcia.
       const movementVelocity = flightDirection.clone().multiplyScalar(
-        speed + startupPropulsion
+        speed + CONSTANT_PROPULSION_SPEED
       );
       flyer.position.addScaledVector(movementVelocity, delta);
       flyer.position.addScaledVector(bounceVelocity, delta);

@@ -583,24 +583,10 @@
 
       group.position.set(x, baseY, z);
 
-      // Hitbox statica del grattacielo, comprensiva di fondamenta e antenna.
-      const hitboxWidth = Math.max(width + 0.9, width * 1.18);
-      const hitboxDepth = Math.max(depth + 0.9, depth * 1.18);
-      const antennaReach = kind === 1 || kind === 3
-        ? 3 + scale * 3 + 1.7 + scale * 1.5
-        : 0;
-      group.userData.hitbox = new THREE.Box3(
-        new THREE.Vector3(
-          x - hitboxWidth * 0.5,
-          baseY - foundationDepth,
-          z - hitboxDepth * 0.5
-        ),
-        new THREE.Vector3(
-          x + hitboxWidth * 0.5,
-          baseY + foundationTop + wallHeight + antennaReach + 0.4,
-          z + hitboxDepth * 0.5
-        )
-      );
+      // Hitbox esatta: viene ricavata dai bordi reali di tutte le mesh visibili
+      // (fondamenta, torre, dettagli, tetto ed eventuale antenna), senza margini.
+      group.updateMatrixWorld(true);
+      group.userData.hitbox = new THREE.Box3().setFromObject(group);
       return group;
     }
 

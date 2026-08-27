@@ -79,6 +79,28 @@
       box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
     }
 
+    #viewToggle {
+      position: absolute;
+      top: 68px;
+      right: 22px;
+      padding: 9px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.62);
+      border-radius: 999px;
+      background: rgba(25, 92, 61, 0.55);
+      color: #fff;
+      cursor: pointer;
+      pointer-events: auto;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    #viewToggle:active {
+      transform: translateY(1px);
+    }
+
     #startScreen {
       position: fixed;
       z-index: 5;
@@ -198,7 +220,7 @@
       right: 28px;
     }
 
-    @media (pointer: coarse) and (max-width: 700px) {
+    @media (pointer: coarse), (max-width: 700px) {
       .help {
         display: none;
       }
@@ -206,6 +228,11 @@
       .title {
         top: 14px;
         left: 16px;
+      }
+
+      #viewToggle {
+        top: 52px;
+        right: 16px;
       }
 
       #touchControls {
@@ -217,20 +244,15 @@
         height: 8px;
       }
     }
-
-    @media (pointer: fine) {
-      #touchControls {
-        display: none !important;
-      }
-    }
   </style>
 </head>
 <body>
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">2</p>
+    <p class="title">3</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
+    <button id="viewToggle" type="button">PRIMA PERSONA</button>
     <div class="crosshair"></div>
   </div>
 
@@ -258,6 +280,7 @@
     const joystick = document.getElementById("joystick");
     const joystickKnob = document.getElementById("joystickKnob");
     const lookArea = document.getElementById("lookArea");
+    const viewToggle = document.getElementById("viewToggle");
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x83c9f4);
@@ -639,16 +662,6 @@
         );
         group.add(building);
 
-        // Debug visivo separato: l'evidenziazione non modifica mai i materiali
-        // delle torri, che restano opachi e scrivono normalmente nel depth buffer.
-        const hitboxHelper = new THREE.Box3Helper(building.userData.hitbox, 0xffd400);
-        hitboxHelper.material.transparent = false;
-        hitboxHelper.material.opacity = 1;
-        hitboxHelper.material.depthTest = true;
-        hitboxHelper.material.depthWrite = false;
-        hitboxHelper.renderOrder = 10;
-        group.add(hitboxHelper);
-
         chunkHitboxes.push(building.userData.hitbox);
       }
 
@@ -864,27 +877,7 @@
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();
 
-    // Due soli cerchi gialli incrociati: rappresentano la hitbox sferica.
-    const hitboxMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffd400,
-      transparent: true,
-      opacity: 0.95,
-      depthTest: false
-    });
-    const hitboxRingA = new THREE.Mesh(
-      new THREE.TorusGeometry(flyerHitboxRadius - 0.014, 0.014, 6, 40),
-      hitboxMaterial
-    );
-    const hitboxRingB = new THREE.Mesh(
-      new THREE.TorusGeometry(flyerHitboxRadius - 0.014, 0.014, 6, 40),
-      hitboxMaterial
-    );
-    hitboxRingB.rotation.x = Math.PI * 0.5;
-    hitboxRingA.name = "droneHitboxRingA";
-    hitboxRingB.name = "droneHitboxRingB";
-    hitboxRingA.renderOrder = 20;
-    hitboxRingB.renderOrder = 20;
-    flyer.add(hitboxRingA, hitboxRingB);
+    // La hitbox resta attiva per collisioni e rimbalzi, ma non viene più visualizzata.
     scene.add(flyer);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
@@ -927,6 +920,7 @@
     let previousLookX = 0;
     let previousLookY = 0;
     let mouseLookPointer = null;
+    let firstPerson = false;
 
     function requestPointerLockSafely() {
       if (!matchMedia("(pointer: fine)").matches || document.pointerLockElement === renderer.domElement) {
@@ -953,6 +947,11 @@
       startScreen.classList.add("hidden");
       enterImmersiveMode();
     }
+
+    viewToggle.addEventListener("click", () => {
+      firstPerson = !firstPerson;
+      viewToggle.textContent = firstPerson ? "TERZA PERSONA" : "PRIMA PERSONA";
+    });
 
     startButton.addEventListener("click", beginGame);
     renderer.domElement.addEventListener("click", () => {
@@ -1261,13 +1260,20 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // Terza persona: la camera resta arretrata e il drone è ben davanti.
-        cameraPosition.set(0, 2.1, 5.8).applyQuaternion(flyer.quaternion);
-        cameraPosition.add(flyer.position);
+        if (firstPerson) {
+          // Prima persona: la camera è appena dietro il sensore del drone.
+          cameraPosition.set(0, 0.08, -0.42).applyQuaternion(flyer.quaternion);
+          cameraPosition.add(flyer.position);
+          cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 8);
+          cameraLookTarget.y += 0.08;
+        } else {
+          // Terza persona: la camera resta arretrata e il drone è ben davanti.
+          cameraPosition.set(0, 2.1, 5.8).applyQuaternion(flyer.quaternion);
+          cameraPosition.add(flyer.position);
+          cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.8);
+          cameraLookTarget.y += 0.25;
+        }
         camera.position.lerp(cameraPosition, Math.min(1, delta * 8));
-
-        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.8);
-        cameraLookTarget.y += 0.25;
         camera.lookAt(cameraLookTarget);
       }
 

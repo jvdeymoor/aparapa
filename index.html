@@ -1183,12 +1183,15 @@
       if (flyerHitsBuilding()) {
         flyer.position.copy(previousPosition);
 
-        // Rimbalzo elastico: la spinta segue la direzione opposta all'impatto.
+        // Rimbalzo elastico ripetibile: anche accelerando contro una parete,
+        // ogni contatto genera un impulso opposto e un piccolo arretramento immediato.
         const impactDirection = movementVelocity.lengthSq() > 0.0001
           ? movementVelocity.clone().normalize()
           : bounceVelocity.clone().normalize();
         if (impactDirection.lengthSq() > 0.0001) {
-          bounceVelocity.copy(impactDirection).multiplyScalar(-Math.max(5, movementVelocity.length() * 0.8));
+          const reboundSpeed = Math.max(7, movementVelocity.length() * 1.1);
+          bounceVelocity.copy(impactDirection).multiplyScalar(-reboundSpeed);
+          flyer.position.addScaledVector(bounceVelocity, delta);
         }
         updateFlyerHitbox();
       }

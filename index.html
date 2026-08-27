@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">13</p>
+    <p class="title">14</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -778,7 +778,7 @@
       // Modello compatto ispirato a un drone sferico corazzato:
       // nessun elemento supera il diametro della sfera (0,68 unità).
       const shell = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 24, 18),
+        new THREE.SphereGeometry(0.18, 24, 18),
         FLYING_MATERIALS.body
       );
       shell.castShadow = true;
@@ -786,7 +786,7 @@
       group.add(shell);
 
       const frontRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.13, 0.018, 8, 24),
+        new THREE.TorusGeometry(0.11, 0.016, 8, 24),
         FLYING_MATERIALS.dark
       );
       frontRing.rotation.x = Math.PI * 0.5;
@@ -794,10 +794,10 @@
       group.add(frontRing);
 
       const sensor = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 16, 10),
+        new THREE.SphereGeometry(0.05, 16, 10),
         FLYING_MATERIALS.glass
       );
-      sensor.position.set(0, 0.02, -0.19);
+      sensor.position.set(0, 0.02, -0.16);
       sensor.castShadow = true;
       group.add(sensor);
 
@@ -805,7 +805,7 @@
         new THREE.SphereGeometry(0.035, 10, 8),
         FLYING_MATERIALS.light
       );
-      beacon.position.set(0, 0.02, -0.24);
+      beacon.position.set(0, 0.02, -0.21);
       group.add(beacon);
 
       function addWing(side) {
@@ -941,7 +941,8 @@
     // e resta fermo nel mondo mentre il drone gli ruota e vola attorno.
     const droneModel = createDrone();
     droneModel.position.copy(flyer.position);
-    droneModel.rotation.y = 0;
+    // Il fronte del modello guarda la camera iniziale.
+    droneModel.rotation.y = Math.PI;
     scene.add(droneModel);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
@@ -1322,7 +1323,7 @@
       if (flyer) {
         // La camera segue il drone giocabile; il modello statico resta nel mondo
         // e può essere osservato volandogli e ruotandogli attorno.
-        cameraPosition.set(0, 0.42, 1.15).applyQuaternion(flyer.quaternion);
+        cameraPosition.set(0, 0.36, 0.98).applyQuaternion(flyer.quaternion);
         cameraPosition.add(flyer.position);
         cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.4);
         cameraLookTarget.y += 0.05;

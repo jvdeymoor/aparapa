@@ -917,6 +917,7 @@
     const cameraPosition = new THREE.Vector3();
     const cameraLookTarget = new THREE.Vector3();
     const flightDirection = new THREE.Vector3(0, 0, -1);
+    const bounceVelocity = new THREE.Vector3();
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
@@ -1163,7 +1164,10 @@
       );
 
       const previousPosition = flyer.position.clone();
-      flyer.position.addScaledVector(flightDirection, speed * delta);
+      const movementVelocity = flightDirection.clone().multiplyScalar(speed);
+      flyer.position.addScaledVector(movementVelocity, delta);
+      flyer.position.addScaledVector(bounceVelocity, delta);
+      bounceVelocity.multiplyScalar(Math.exp(-9 * delta));
 
       const groundHeight = heightAt(flyer.position.x, flyer.position.z);
       flyer.position.y = THREE.MathUtils.clamp(
@@ -1178,6 +1182,14 @@
       updateFlyerHitbox();
       if (flyerHitsBuilding()) {
         flyer.position.copy(previousPosition);
+
+        // Rimbalzo elastico: la spinta segue la direzione opposta all'impatto.
+        const impactDirection = movementVelocity.lengthSq() > 0.0001
+          ? movementVelocity.clone().normalize()
+          : bounceVelocity.clone().normalize();
+        if (impactDirection.lengthSq() > 0.0001) {
+          bounceVelocity.copy(impactDirection).multiplyScalar(-Math.max(5, movementVelocity.length() * 0.8));
+        }
         updateFlyerHitbox();
       }
     }

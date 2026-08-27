@@ -918,6 +918,7 @@
     const cameraLookTarget = new THREE.Vector3();
     const flightDirection = new THREE.Vector3(0, 0, -1);
     const bounceVelocity = new THREE.Vector3();
+    const bounceTilt = new THREE.Vector3();
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
@@ -1116,14 +1117,42 @@
       flyer.userData.hitbox.set(flyer.position, flyerHitboxRadius);
     }
 
-    function flyerHitsBuilding() {
-      if (!flyer?.userData.hitbox) return false;
+    function findFlyerBuildingCollision() {
+      if (!flyer?.userData.hitbox) return null;
+
+      const closestPoint = new THREE.Vector3();
+      const separation = new THREE.Vector3();
       for (const hitboxes of buildingHitboxes.values()) {
         for (const hitbox of hitboxes) {
-          if (flyer.userData.hitbox.intersectsBox(hitbox)) return true;
+          if (!flyer.userData.hitbox.intersectsBox(hitbox)) continue;
+
+          closestPoint.set(
+            THREE.MathUtils.clamp(flyer.position.x, hitbox.min.x, hitbox.max.x),
+            THREE.MathUtils.clamp(flyer.position.y, hitbox.min.y, hitbox.max.y),
+            THREE.MathUtils.clamp(flyer.position.z, hitbox.min.z, hitbox.max.z)
+          );
+          separation.copy(flyer.position).sub(closestPoint);
+
+          if (separation.lengthSq() > 0.000001) {
+            return separation.normalize();
+          }
+
+          // Se il centro è dentro l'AABB, scegli la faccia con penetrazione minore.
+          const distances = [
+            { axis: "x", distance: flyer.position.x - hitbox.min.x, sign: 1 },
+            { axis: "x", distance: hitbox.max.x - flyer.position.x, sign: -1 },
+            { axis: "y", distance: flyer.position.y - hitbox.min.y, sign: 1 },
+            { axis: "y", distance: hitbox.max.y - flyer.position.y, sign: -1 },
+            { axis: "z", distance: flyer.position.z - hitbox.min.z, sign: 1 },
+            { axis: "z", distance: hitbox.max.z - flyer.position.z, sign: -1 }
+          ];
+          distances.sort((a, b) => a.distance - b.distance);
+          const normal = new THREE.Vector3();
+          normal[distances[0].axis] = distances[0].sign;
+          return normal;
         }
       }
-      return false;
+      return null;
     }
 
     function moveFlyer(delta) {
@@ -1167,7 +1196,8 @@
       const movementVelocity = flightDirection.clone().multiplyScalar(speed);
       flyer.position.addScaledVector(movementVelocity, delta);
       flyer.position.addScaledVector(bounceVelocity, delta);
-      bounceVelocity.multiplyScalar(Math.exp(-9 * delta));
+      bounceVelocity.multiplyScalar(Math.exp(-3.8 * delta));
+      bounceTilt.multiplyScalar(Math.exp(-5.5 * delta));
 
       const groundHeight = heightAt(flyer.position.x, flyer.position.z);
       flyer.position.y = THREE.MathUtils.clamp(
@@ -1175,26 +1205,45 @@
         groundHeight + 4.5,
         140
       );
-      flyer.rotation.set(pitch, yaw, 0);
 
       // Carica il chunk eventualmente attraversato prima di testare la collisione.
       syncTerrainChunks();
       updateFlyerHitbox();
-      if (flyerHitsBuilding()) {
+      const collisionNormal = findFlyerBuildingCollision();
+      if (collisionNormal) {
         flyer.position.copy(previousPosition);
 
-        // Rimbalzo elastico ripetibile: anche accelerando contro una parete,
-        // ogni contatto genera un impulso opposto e un piccolo arretramento immediato.
-        const impactDirection = movementVelocity.lengthSq() > 0.0001
-          ? movementVelocity.clone().normalize()
-          : bounceVelocity.clone().normalize();
-        if (impactDirection.lengthSq() > 0.0001) {
-          const reboundSpeed = Math.max(7, movementVelocity.length() * 1.1);
-          bounceVelocity.copy(impactDirection).multiplyScalar(-reboundSpeed);
-          flyer.position.addScaledVector(bounceVelocity, delta);
-        }
+        // L'impulso segue la normale della superficie, quindi tiene conto
+        // dell'angolo reale con cui il drone colpisce il palazzo.
+        const incomingVelocity = movementVelocity.clone().add(bounceVelocity);
+        const impactSpeed = Math.max(0, -incomingVelocity.dot(collisionNormal));
+        const reboundSpeed = Math.min(6.5, Math.max(2.8, impactSpeed * 0.72));
+        bounceVelocity.copy(collisionNormal).multiplyScalar(reboundSpeed);
+        flyer.position.addScaledVector(bounceVelocity, delta);
+
+        // Tilt elastico di 3–7 gradi: asse Y per la deviazione laterale,
+        // asse X quando l'urto avviene durante una salita/discesa.
+        const localNormal = collisionNormal.clone().applyAxisAngle(
+          new THREE.Vector3(0, 1, 0),
+          -yaw
+        );
+        const normalizedImpact = THREE.MathUtils.clamp(
+          impactSpeed / Math.max(1, movementVelocity.length()),
+          0,
+          1
+        );
+        const tilt = THREE.MathUtils.degToRad(3 + normalizedImpact * 4);
+        const verticalRatio = THREE.MathUtils.clamp(
+          Math.abs(movementVelocity.y) / Math.max(1, movementVelocity.length()),
+          0,
+          1
+        );
+        bounceTilt.y = THREE.MathUtils.clamp(localNormal.x * tilt, -tilt, tilt);
+        bounceTilt.x = -Math.sign(movementVelocity.y) * tilt * verticalRatio;
         updateFlyerHitbox();
       }
+
+      flyer.rotation.set(pitch + bounceTilt.x, yaw + bounceTilt.y, bounceTilt.z);
     }
 
     function animate() {

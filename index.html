@@ -583,10 +583,14 @@
 
       group.position.set(x, baseY, z);
 
-      // Hitbox esatta: viene ricavata dai bordi reali di tutte le mesh visibili
-      // (fondamenta, torre, dettagli, tetto ed eventuale antenna), senza margini.
+      // La base verticale attraversa tutta la fondazione, ma il perimetro
+      // orizzontale segue il corpo del palazzo e non la fondazione più larga.
       group.updateMatrixWorld(true);
-      group.userData.hitbox = new THREE.Box3().setFromObject(group);
+      const visualBounds = new THREE.Box3().setFromObject(group);
+      group.userData.hitbox = new THREE.Box3(
+        new THREE.Vector3(x - width * 0.5, visualBounds.min.y, z - depth * 0.5),
+        new THREE.Vector3(x + width * 0.5, visualBounds.max.y, z + depth * 0.5)
+      );
       return group;
     }
 
@@ -624,12 +628,13 @@
         );
         group.add(building);
 
-        // Debug visivo: il bordo giallo segue esattamente la hitbox reale del palazzo.
+        // Debug visivo opaco: la facciata resta davanti alle linee nascoste.
         const hitboxHelper = new THREE.Box3Helper(building.userData.hitbox, 0xffd400);
-        hitboxHelper.material.transparent = true;
-        hitboxHelper.material.opacity = 0.78;
-        hitboxHelper.material.depthTest = false;
-        hitboxHelper.renderOrder = 19;
+        hitboxHelper.material.transparent = false;
+        hitboxHelper.material.opacity = 1;
+        hitboxHelper.material.depthTest = true;
+        hitboxHelper.material.depthWrite = false;
+        hitboxHelper.renderOrder = 10;
         group.add(hitboxHelper);
 
         chunkHitboxes.push(building.userData.hitbox);

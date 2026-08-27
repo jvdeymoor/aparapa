@@ -198,7 +198,7 @@
       right: 28px;
     }
 
-    @media (pointer: coarse), (max-width: 700px) {
+    @media (pointer: coarse) and (max-width: 700px) {
       .help {
         display: none;
       }
@@ -215,6 +215,12 @@
       .crosshair {
         width: 8px;
         height: 8px;
+      }
+    }
+
+    @media (pointer: fine) {
+      #touchControls {
+        display: none !important;
       }
     }
   </style>
@@ -569,18 +575,19 @@
     let lookPointer = null;
     let previousLookX = 0;
     let previousLookY = 0;
+    let mouseLookPointer = null;
 
-    async function enterImmersiveMode() {
-      try {
-        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch {
-        // Alcuni browser mobili non permettono lo schermo intero nelle pagine web.
-      }
-
+    function enterImmersiveMode() {
+      // Entrambe le richieste partono direttamente dal click dell'utente:
+      // così il pointer lock funziona anche quando il fullscreen viene rifiutato.
       if (matchMedia("(pointer: fine)").matches && document.pointerLockElement !== renderer.domElement) {
         renderer.domElement.requestPointerLock?.();
+      }
+
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {
+          // Alcuni browser mobili o incorporati non permettono lo schermo intero.
+        });
       }
     }
 
@@ -592,7 +599,11 @@
 
     startButton.addEventListener("click", beginGame);
     renderer.domElement.addEventListener("click", () => {
-      if (!started) beginGame();
+      if (!started) {
+        beginGame();
+      } else if (matchMedia("(pointer: fine)").matches && document.pointerLockElement !== renderer.domElement) {
+        renderer.domElement.requestPointerLock?.();
+      }
     });
 
     addEventListener("keydown", event => {
@@ -611,8 +622,34 @@
     });
 
     renderer.domElement.addEventListener("pointerdown", event => {
-      if (started && matchMedia("(pointer: fine)").matches) renderer.domElement.setPointerCapture(event.pointerId);
+      if (!started || !matchMedia("(pointer: fine)").matches) return;
+      mouseLookPointer = event.pointerId;
+      previousLookX = event.clientX;
+      previousLookY = event.clientY;
+      renderer.domElement.setPointerCapture(event.pointerId);
     });
+
+    renderer.domElement.addEventListener("pointermove", event => {
+      // Fallback per browser che non consentono il pointer lock:
+      // clicca e trascina sul canvas per guardarti intorno.
+      if (!started || event.pointerId !== mouseLookPointer || document.pointerLockElement === renderer.domElement) return;
+      yaw -= (event.clientX - previousLookX) * 0.006;
+      pitch -= (event.clientY - previousLookY) * 0.006;
+      pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
+      previousLookX = event.clientX;
+      previousLookY = event.clientY;
+    });
+
+    function stopMouseLooking(event) {
+      if (event.pointerId !== mouseLookPointer) return;
+      mouseLookPointer = null;
+      if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+    }
+
+    renderer.domElement.addEventListener("pointerup", stopMouseLooking);
+    renderer.domElement.addEventListener("pointercancel", stopMouseLooking);
 
     function updateJoystick(event) {
       const rect = joystick.getBoundingClientRect();

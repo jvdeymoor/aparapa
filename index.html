@@ -286,13 +286,21 @@
     // Terreno procedurale a chunk: l'altezza dipende sempre dalle coordinate globali.
     // Questo mantiene i bordi dei quadranti coincidenti, come nel vecchio sistema Java,
     // senza dover correggere manualmente le cuciture tra un quadrante e l'altro.
+    // Terreno procedurale a chunk: l'altezza dipende dalle coordinate globali.
+    // I profili vengono interpolati tra i vertici della griglia dei chunk, così
+    // ogni area ha caratteristiche diverse senza creare scalini ai bordi.
     const TERRAIN = {
       chunkSize: 64,
       segments: 32,
       loadRadius: 2,
-      maxHeight: 7.5,
       seed: 270827
     };
+    const TERRAIN_PROFILES = [
+      { name: "pianura", amplitude: 0.55, detail: 0.12, ridge: 0.02, grass: 0x6dbb5a },
+      { name: "leggermente mosso", amplitude: 2.5, detail: 0.55, ridge: 0.18, grass: 0x5ba64d },
+      { name: "scosceso", amplitude: 5.4, detail: 1.15, ridge: 1.2, grass: 0x4a8d43 },
+      { name: "montagna", amplitude: 9.5, detail: 1.8, ridge: 3.7, grass: 0x668a60 }
+    ];
     const terrainChunks = new Map();
 
     function hash2D(x, z) {
@@ -335,27 +343,74 @@
       return sum / weight;
     }
 
+    function profileAtNode(chunkX, chunkZ) {
+      const choice = Math.min(
+        TERRAIN_PROFILES.length - 1,
+        Math.floor(hash2D(chunkX * 37 + 11, chunkZ * 37 - 19) * TERRAIN_PROFILES.length)
+      );
+      const source = TERRAIN_PROFILES[choice];
+      const variation = 0.84 + hash2D(chunkX * 53 - 7, chunkZ * 53 + 23) * 0.32;
+      return {
+        name: source.name,
+        amplitude: source.amplitude * variation,
+        detail: source.detail * variation,
+        ridge: source.ridge * variation,
+        grass: source.grass
+      };
+    }
+
+    function mixProfile(a, b, t) {
+      return {
+        name: t < 0.5 ? a.name : b.name,
+        amplitude: lerp(a.amplitude, b.amplitude, t),
+        detail: lerp(a.detail, b.detail, t),
+        ridge: lerp(a.ridge, b.ridge, t),
+        grass: new THREE.Color(a.grass).lerp(new THREE.Color(b.grass), t)
+      };
+    }
+
+    function terrainProfileAt(x, z) {
+      const gridX = x / TERRAIN.chunkSize;
+      const gridZ = z / TERRAIN.chunkSize;
+      const x0 = Math.floor(gridX);
+      const z0 = Math.floor(gridZ);
+      const tx = smooth(gridX - x0);
+      const tz = smooth(gridZ - z0);
+      const p00 = profileAtNode(x0, z0);
+      const p10 = profileAtNode(x0 + 1, z0);
+      const p01 = profileAtNode(x0, z0 + 1);
+      const p11 = profileAtNode(x0 + 1, z0 + 1);
+      const px0 = mixProfile(p00, p10, tx);
+      const px1 = mixProfile(p01, p11, tx);
+      return mixProfile(px0, px1, tz);
+    }
+
     function heightAt(x, z) {
+      const profile = terrainProfileAt(x, z);
       const broad = fractalNoise(x * 0.012, z * 0.012, 5);
       const detail = fractalNoise(x * 0.045 + 17.3, z * 0.045 - 9.1, 4);
       const ridgeNoise = fractalNoise(x * 0.02 - 41.7, z * 0.02 + 28.4, 4);
       const ridge = 1 - Math.abs(ridgeNoise * 2 - 1);
-      return (broad - 0.5) * TERRAIN.maxHeight
-        + (detail - 0.5) * 1.65
-        + (ridge - 0.5) * 1.25;
+      return (broad - 0.5) * profile.amplitude
+        + (detail - 0.5) * profile.detail
+        + (ridge - 0.5) * profile.ridge;
     }
 
     function terrainColor(height, slope, x, z) {
-      const color = new THREE.Color();
-      const variation = (valueNoise(x * 0.08, z * 0.08) - 0.5) * 0.08;
-      if (height < -2.2) {
-        color.setRGB(0.72 + variation, 0.62 + variation, 0.35 + variation);
-      } else if (slope > 1.55 || height > 4.6) {
-        color.setRGB(0.38 + variation, 0.39 + variation, 0.37 + variation);
-      } else if (height > 2.7) {
-        color.setRGB(0.50 + variation, 0.52 + variation, 0.30 + variation);
+      const profile = terrainProfileAt(x, z);
+      const color = new THREE.Color(profile.grass);
+      const variation = (valueNoise(x * 0.08 + 73, z * 0.08 - 31) - 0.5) * 0.12;
+      const surfaceNoise = valueNoise(x * 0.055 - 91, z * 0.055 + 47);
+      const rockLine = 1.2 + profile.amplitude * 0.17;
+
+      if (slope > 1.05 || height > rockLine) {
+        color.setRGB(0.36 + variation, 0.37 + variation, 0.35 + variation);
+      } else if (height < -1.35 && surfaceNoise > 0.28) {
+        color.setRGB(0.76 + variation, 0.65 + variation, 0.39 + variation);
+      } else if (surfaceNoise > 0.79 || (slope > 0.55 && surfaceNoise > 0.56)) {
+        color.setRGB(0.47 + variation, 0.32 + variation, 0.19 + variation);
       } else {
-        color.setRGB(0.20 + variation, 0.48 + variation, 0.20 + variation);
+        color.offsetHSL(0, variation * 0.18, variation);
       }
       return color;
     }

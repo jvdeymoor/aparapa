@@ -578,16 +578,10 @@
     let mouseLookPointer = null;
 
     function enterImmersiveMode() {
-      // Entrambe le richieste partono direttamente dal click dell'utente:
-      // così il pointer lock funziona anche quando il fullscreen viene rifiutato.
+      // Il fullscreen non viene più richiesto automaticamente.
+      // Sul desktop il click prova solo ad attivare il pointer lock.
       if (matchMedia("(pointer: fine)").matches && document.pointerLockElement !== renderer.domElement) {
         renderer.domElement.requestPointerLock?.();
-      }
-
-      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {
-          // Alcuni browser mobili o incorporati non permettono lo schermo intero.
-        });
       }
     }
 

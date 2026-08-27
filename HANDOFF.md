@@ -15,6 +15,7 @@
 - profili diversi per ogni area, interpolati ai bordi per evitare scalini;
 - altezza globale regolabile tramite `TERRAIN.verticalScale`;
 - colori e superfici diversificate: prato, roccia, terra e sabbia;
+- palazzi e costruzioni procedurali per chunk: case, torri, rovine e dettagli;
 - generazione deterministica tramite seed;
 - chunk da 64×64 con 32 suddivisioni per lato;
 - caricamento dinamico dei chunk in una griglia 5×5 attorno al giocatore;
@@ -33,7 +34,7 @@ La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset lo
 
 ## Ultima modifica
 
-I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239`, `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7`, `575e138c2e1e974ad1d176a80daaeb581f8a5af3` e `91526c4971a717fbeeca85c1b3d4cfe1f8aa1305` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli, introducono i quattro profili con superfici colorate, il controllo globale dell’altezza e l’avvio senza fullscreen automatico. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
+I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239`, `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7`, `575e138c2e1e974ad1d176a80daaeb581f8a5af3`, `91526c4971a717fbeeca85c1b3d4cfe1f8aa1305` e `51770673a22d3874a00a7b47ef524515a4894338` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli, introducono i quattro profili con superfici colorate, il controllo globale dell’altezza, l’avvio senza fullscreen automatico e le costruzioni procedurali. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
 
 ## Prossimi sviluppi possibili
 

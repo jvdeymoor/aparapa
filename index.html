@@ -328,25 +328,25 @@
     const BUILDING_MATERIALS = {
       facades: [
         new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+          color: 0x6d7378,
           vertexColors: true,
           roughness: 0.84,
           metalness: 0.08
         }),
         new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+          color: 0x39444c,
           vertexColors: true,
           roughness: 0.72,
           metalness: 0.16
         }),
         new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+          color: 0x8b8f8c,
           vertexColors: true,
           roughness: 0.9,
           metalness: 0.04
         }),
         new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+          color: 0x26343d,
           vertexColors: true,
           roughness: 0.62,
           metalness: 0.22
@@ -599,7 +599,7 @@
           indices.push(a, d, b, b, d, c);
         }
       }
-      return new Uint32Array(indices);
+      return new Uint16Array(indices);
     })();
 
     function createTerrainChunk(chunkX, chunkZ) {

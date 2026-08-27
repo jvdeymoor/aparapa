@@ -310,6 +310,7 @@
     ];
     const terrainChunks = new Map();
     const structureChunks = new Map();
+    const buildingHitboxes = new Map();
     let flyer = null;
     const BUILDING_MATERIALS = {
       facades: [
@@ -578,11 +579,31 @@
       }
 
       group.position.set(x, baseY, z);
+
+      // Hitbox statica del grattacielo, comprensiva di fondamenta e antenna.
+      const hitboxWidth = Math.max(width + 0.9, width * 1.18);
+      const hitboxDepth = Math.max(depth + 0.9, depth * 1.18);
+      const antennaReach = kind === 1 || kind === 3
+        ? 3 + scale * 3 + 1.7 + scale * 1.5
+        : 0;
+      group.userData.hitbox = new THREE.Box3(
+        new THREE.Vector3(
+          x - hitboxWidth * 0.5,
+          baseY - foundationDepth,
+          z - hitboxDepth * 0.5
+        ),
+        new THREE.Vector3(
+          x + hitboxWidth * 0.5,
+          baseY + foundationTop + wallHeight + antennaReach + 0.4,
+          z + hitboxDepth * 0.5
+        )
+      );
       return group;
     }
 
     function createStructuresChunk(chunkX, chunkZ) {
       const group = new THREE.Group();
+      const chunkHitboxes = [];
       const count = 10 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 7);
       const columns = 4;
       const rows = 4;
@@ -613,8 +634,10 @@
           Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.facades.length)
         );
         group.add(building);
+        chunkHitboxes.push(building.userData.hitbox);
       }
 
+      buildingHitboxes.set(chunkKey(chunkX, chunkZ), chunkHitboxes);
       scene.add(group);
       return group;
     }
@@ -722,6 +745,7 @@
         if (!needed.has(key)) {
           scene.remove(group);
           disposeStructureGroup(group);
+          buildingHitboxes.delete(key);
           structureChunks.delete(key);
         }
       }
@@ -770,22 +794,6 @@
       cockpit.castShadow = true;
       group.add(cockpit);
 
-      const wings = new THREE.Mesh(
-        new THREE.BoxGeometry(4.8, 0.12, 0.92),
-        FLYING_MATERIALS.dark
-      );
-      wings.position.set(0, -0.06, 0.2);
-      wings.castShadow = true;
-      group.add(wings);
-
-      const tailWing = new THREE.Mesh(
-        new THREE.BoxGeometry(2.1, 0.1, 0.5),
-        FLYING_MATERIALS.dark
-      );
-      tailWing.position.set(0, 0.02, 1.45);
-      tailWing.castShadow = true;
-      group.add(tailWing);
-
       const fin = new THREE.Mesh(
         new THREE.BoxGeometry(0.12, 0.85, 0.78),
         FLYING_MATERIALS.dark
@@ -806,7 +814,10 @@
 
     flyer = createFlyingVehicle();
     flyer.position.set(0, heightAt(0, 8) + 16, 8);
+    flyer.userData.hitbox = new THREE.Box3();
+    flyer.visible = false;
     scene.add(flyer);
+    updateFlyerHitbox();
 
     // Nessun albero: la scena resta una metropoli urbana compatta.
 
@@ -835,9 +846,10 @@
     const keys = new Set();
     let yaw = 0;
     let pitch = 0;
-    const cameraFollowPosition = new THREE.Vector3();
+    const cameraPosition = new THREE.Vector3();
     const cameraLookTarget = new THREE.Vector3();
-    const flightDirection = new THREE.Vector3();
+    const flightDirection = new THREE.Vector3(0, 0, -1);
+    const flyerHitboxSize = new THREE.Vector3(2.2, 2.0, 4.8);
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
@@ -970,6 +982,21 @@
     lookArea.addEventListener("pointerup", stopLooking);
     lookArea.addEventListener("pointercancel", stopLooking);
 
+    function updateFlyerHitbox() {
+      if (!flyer?.userData.hitbox) return;
+      flyer.userData.hitbox.setFromCenterAndSize(flyer.position, flyerHitboxSize);
+    }
+
+    function flyerHitsBuilding() {
+      if (!flyer?.userData.hitbox) return false;
+      for (const hitboxes of buildingHitboxes.values()) {
+        for (const hitbox of hitboxes) {
+          if (flyer.userData.hitbox.intersectsBox(hitbox)) return true;
+        }
+      }
+      return false;
+    }
+
     function moveFlyer(delta) {
       if (!started || !flyer) return;
 
@@ -984,9 +1011,7 @@
       if (keys.has("arrowup")) pitchInput += 1;
       if (keys.has("arrowdown")) pitchInput -= 1;
 
-      // Il joystick mobile è volutamente un comando binario:
-      // basta premerlo/tenerlo premuto per avanzare. La sua posizione
-      // non modifica per ora né il muso né la curva.
+      // Il joystick mobile resta un comando binario di avanzamento.
       if (joystickPointer !== null) {
         throttle = 1;
       }
@@ -1001,6 +1026,8 @@
         Math.sin(pitch),
         -Math.cos(yaw) * Math.cos(pitch)
       );
+
+      const previousPosition = flyer.position.clone();
       flyer.position.addScaledVector(flightDirection, speed * delta);
 
       const groundHeight = heightAt(flyer.position.x, flyer.position.z);
@@ -1010,7 +1037,14 @@
         140
       );
       flyer.rotation.set(pitch, yaw, 0);
+
+      // Carica il chunk eventualmente attraversato prima di testare la collisione.
       syncTerrainChunks();
+      updateFlyerHitbox();
+      if (flyerHitsBuilding()) {
+        flyer.position.copy(previousPosition);
+        updateFlyerHitbox();
+      }
     }
 
     function animate() {
@@ -1019,12 +1053,13 @@
       moveFlyer(delta);
 
       if (flyer) {
-        cameraFollowPosition.set(0, 3.8, 10).applyQuaternion(flyer.quaternion);
-        cameraFollowPosition.add(flyer.position);
-        camera.position.lerp(cameraFollowPosition, Math.min(1, delta * 8));
+        // Prima persona: la camera è dentro il corpo del velivolo.
+        cameraPosition.set(0, 0.24, -0.72).applyQuaternion(flyer.quaternion);
+        cameraPosition.add(flyer.position);
+        camera.position.lerp(cameraPosition, Math.min(1, delta * 14));
 
-        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 9);
-        cameraLookTarget.y += 0.8;
+        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 10);
+        cameraLookTarget.y += 0.5;
         camera.lookAt(cameraLookTarget);
       }
 

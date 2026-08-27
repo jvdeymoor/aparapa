@@ -224,7 +224,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p class="title">11</p>
+    <p class="title">12</p>
     <p class="help">WASD / frecce · mouse per pilotare e guardarti intorno</p>
     <div class="crosshair"></div>
   </div>
@@ -941,7 +941,7 @@
     // e resta fermo nel mondo mentre il drone gli ruota e vola attorno.
     const droneModel = createDrone();
     droneModel.position.copy(flyer.position);
-    droneModel.rotation.y = yaw;
+    droneModel.rotation.y = 0;
     scene.add(droneModel);
 
     // Nessun albero: la scena resta una metropoli urbana compatta.

@@ -822,8 +822,11 @@
       decorativeDroneAnchor.add(flyer.position);
       decorativeDroneAnchor.addScaledVector(flightDirection, 1);
       decorativeDrone.position.copy(decorativeDroneAnchor);
+      // Punto zero del drone: la punta originale, prima rivolta verso l'alto,
+      // diventa l'avanti (-Z); la pancia viola resta rivolta verso il basso (-Y).
       decorativeDrone.quaternion.copy(flyer.quaternion);
       decorativeDrone.rotateY(Math.PI * 0.5);
+      decorativeDrone.rotateX(-Math.PI * 0.5);
       decorativeDrone.scale.setScalar(0.12);
       decorativeDrone.visible = true;
       decorativeDronePlaced = true;

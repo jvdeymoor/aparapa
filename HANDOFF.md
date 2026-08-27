@@ -25,7 +25,7 @@
 - cielo, nebbia, illuminazione e nuvole, senza alberi;
 - pilotaggio su PC con WASD/frecce e mouse o trascinamento;
 - visuale su PC con mouse e puntatore bloccato;
-- joystick virtuale a sinistra su cellulare: tenerlo premuto dà spinta, su/giù alza o abbassa il muso, sinistra/destra curva;
+- joystick virtuale a sinistra su cellulare: tenerlo premuto dà spinta; per ora spostare il pomello non cambia direzione o altezza;
 - swipe sul lato destro dello schermo per controllare visuale e direzione come il mouse su PC;
 - avvio in finestra del browser, senza richiesta automatica di fullscreen;
 - schermata iniziale con pulsante `INIZIA`.

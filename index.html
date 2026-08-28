@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">32</p>
+    <p id="modificationCounter" class="counter">33</p>
     <div class="crosshair"></div>
   </div>
 
@@ -249,7 +249,7 @@
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 32;
+    const MODIFICATION_COUNT = 33;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -948,8 +948,10 @@
     startButton.addEventListener("click", beginGame);
 
     let thirdPersonEnabled = false;
-    // Offset mondo fisso: 2,36 unità dal player, oltre un metro più vicino di prima.
-    const THIRD_PERSON_OFFSET = new THREE.Vector3(0, 1.25, 2);
+    // Camera più vicina della configurazione originaria.
+    const THIRD_PERSON_DISTANCE = 2;
+    const THIRD_PERSON_HEIGHT = 1.25;
+    const cameraFlatForward = new THREE.Vector3();
 
     function setThirdPersonEnabled(enabled) {
       thirdPersonEnabled = enabled;
@@ -1299,9 +1301,11 @@
 
       if (flyer) {
         if (thirdPersonEnabled) {
-          // Camera di osservazione: segue solo la posizione, con orizzonte fisso.
-          // Il drone conserva quindi visibili yaw, beccheggio e roll.
-          cameraPosition.copy(flyer.position).add(THIRD_PERSON_OFFSET);
+          // Camera d'inseguimento: segue il drone sulla direzione orizzontale.
+          cameraFlatForward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+          cameraPosition.copy(flyer.position);
+          cameraPosition.addScaledVector(cameraFlatForward, -THIRD_PERSON_DISTANCE);
+          cameraPosition.y += THIRD_PERSON_HEIGHT;
           cameraLookTarget.copy(flyer.position);
         } else {
           // Visuale in prima persona dalla punta frontale del modello.

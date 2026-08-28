@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">36</p>
+    <p id="modificationCounter" class="counter">37</p>
     <div class="crosshair"></div>
   </div>
 
@@ -250,7 +250,7 @@
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 36;
+    const MODIFICATION_COUNT = 37;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -882,7 +882,7 @@
     let previousYawForBank = 0;
     let smoothedYawRate = 0;
     let turnBank = 0;
-    const MAX_TURN_BANK = THREE.MathUtils.degToRad(11);
+    const MAX_TURN_BANK = THREE.MathUtils.degToRad(16.5);
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };

@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">33</p>
+    <p id="modificationCounter" class="counter">34</p>
     <div class="crosshair"></div>
   </div>
 
@@ -249,7 +249,7 @@
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 33;
+    const MODIFICATION_COUNT = 34;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -825,6 +825,9 @@
     // Il drone giocabile è un controller invisibile: conserva posizione, rotazione,
     // hitbox e fisica, senza trascinare con sé il modello estetico.
     flyer = new THREE.Group();
+    // La direzione di volo usa yaw globale e pitch locale: il modello deve
+    // comporre le rotazioni nello stesso ordine per restare allineato alla marcia.
+    flyer.rotation.order = "YXZ";
     const safeSpawn = findSafeSpawn();
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();

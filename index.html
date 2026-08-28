@@ -125,12 +125,11 @@
       box-shadow: 0 2px 0 #b28612;
     }
 
-    #thirdPersonButton {
+    #thirdPersonButton,
+    #thirdPersonQuickToggle {
       position: fixed;
       z-index: 4;
       top: 18px;
-      right: 20px;
-      min-width: 52px;
       min-height: 42px;
       border: 1px solid rgba(255, 255, 255, 0.72);
       border-radius: 12px;
@@ -141,6 +140,24 @@
       font-weight: 900;
       letter-spacing: 0.06em;
       backdrop-filter: blur(6px);
+    }
+
+    #thirdPersonButton {
+      right: 72px;
+      min-width: 52px;
+    }
+
+    #thirdPersonQuickToggle {
+      right: 20px;
+      width: 42px;
+      min-width: 42px;
+      padding: 0;
+    }
+
+    #thirdPersonQuickToggle.active {
+      border-color: #f6ca35;
+      background: #f6ca35;
+      box-shadow: 0 0 0 3px rgba(246, 202, 53, 0.24);
     }
 
     #cameraMenu {
@@ -291,7 +308,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">28</p>
+    <p id="modificationCounter" class="counter">29</p>
     <div class="crosshair"></div>
   </div>
 
@@ -302,36 +319,37 @@
 
 
   <button id="thirdPersonButton" type="button" aria-controls="cameraMenu">3P</button>
+  <button id="thirdPersonQuickToggle" type="button" aria-label="Attiva o disattiva la terza persona" aria-pressed="true"></button>
 
   <section id="cameraMenu" aria-hidden="true">
     <div class="camera-menu-card" role="dialog" aria-modal="true" aria-labelledby="cameraMenuTitle">
       <h2 id="cameraMenuTitle">Camera</h2>
       <label class="camera-switch" for="thirdPersonSwitch">
         <span>Terza persona</span>
-        <input id="thirdPersonSwitch" type="checkbox">
+        <input id="thirdPersonSwitch" type="checkbox" checked>
       </label>
 
       <div class="camera-control">
         <label for="cameraBackZRange">Traslazione camera Z</label>
-        <input id="cameraBackZRange" type="range" min="0" max="0.567195" step="0.001" value="0">
+        <input id="cameraBackZRange" type="range" min="0" max="0.567195" step="0.001" value="0.435">
         <input id="cameraBackZNumber" type="number" min="0" max="0.567195" step="0.001" value="0" inputmode="decimal" aria-label="Valore traslazione camera Z">
       </div>
 
       <div class="camera-control">
         <label for="cameraUpYRange">Traslazione camera Y</label>
-        <input id="cameraUpYRange" type="range" min="0" max="0.38" step="0.001" value="0">
+        <input id="cameraUpYRange" type="range" min="0" max="0.38" step="0.001" value="0.151">
         <input id="cameraUpYNumber" type="number" min="0" max="0.38" step="0.001" value="0" inputmode="decimal" aria-label="Valore traslazione camera Y">
       </div>
 
       <div class="camera-control">
         <label for="cameraAngleXRange">Angolazione camera X</label>
-        <input id="cameraAngleXRange" type="range" min="-45" max="45" step="1" value="0">
+        <input id="cameraAngleXRange" type="range" min="-45" max="45" step="1" value="-29">
         <input id="cameraAngleXNumber" type="number" min="-45" max="45" step="1" value="0" inputmode="decimal" aria-label="Valore angolazione camera X">
       </div>
 
       <div class="camera-control">
         <label for="cameraZoomRange">Zoom obiettivo</label>
-        <input id="cameraZoomRange" type="range" min="0.5" max="2.5" step="0.01" value="1">
+        <input id="cameraZoomRange" type="range" min="0.5" max="2.5" step="0.01" value="0.5">
         <input id="cameraZoomNumber" type="number" min="0.5" max="2.5" step="0.01" value="1" inputmode="decimal" aria-label="Valore zoom obiettivo">
       </div>
 
@@ -369,6 +387,7 @@
     const modificationCounter = document.getElementById("modificationCounter");
 
     const thirdPersonButton = document.getElementById("thirdPersonButton");
+    const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     const cameraMenu = document.getElementById("cameraMenu");
     const closeCameraMenu = document.getElementById("closeCameraMenu");
     const thirdPersonSwitch = document.getElementById("thirdPersonSwitch");
@@ -381,7 +400,7 @@
     const cameraZoomRange = document.getElementById("cameraZoomRange");
     const cameraZoomNumber = document.getElementById("cameraZoomNumber");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 28;
+    const MODIFICATION_COUNT = 29;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -1080,11 +1099,11 @@
     startButton.addEventListener("click", beginGame);
 
     const cameraSettings = {
-      thirdPerson: false,
-      backZ: 0,
-      upY: 0,
-      angleX: 0,
-      zoom: 1
+      thirdPerson: true,
+      backZ: 0.435,
+      upY: 0.151,
+      angleX: -29,
+      zoom: 0.5
     };
     const cameraRightAxis = new THREE.Vector3();
 
@@ -1124,11 +1143,22 @@
     bindCameraControl(cameraAngleXRange, cameraAngleXNumber, "angleX");
     bindCameraControl(cameraZoomRange, cameraZoomNumber, "zoom", setCameraZoom);
 
+    function setThirdPersonEnabled(enabled) {
+      cameraSettings.thirdPerson = enabled;
+      thirdPersonSwitch.checked = enabled;
+      thirdPersonQuickToggle.classList.toggle("active", enabled);
+      thirdPersonQuickToggle.setAttribute("aria-pressed", String(enabled));
+    }
+
     thirdPersonButton.addEventListener("click", () => setCameraMenuOpen(true));
+    thirdPersonQuickToggle.addEventListener("click", () => {
+      setThirdPersonEnabled(!cameraSettings.thirdPerson);
+    });
     closeCameraMenu.addEventListener("click", () => setCameraMenuOpen(false));
     thirdPersonSwitch.addEventListener("change", () => {
-      cameraSettings.thirdPerson = thirdPersonSwitch.checked;
+      setThirdPersonEnabled(thirdPersonSwitch.checked);
     });
+    setThirdPersonEnabled(true);
 
     renderer.domElement.addEventListener("click", () => {
       if (!started) {

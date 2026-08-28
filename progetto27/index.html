@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>27</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #fff;
+      background: #82c9f5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #82c9f5;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      touch-action: none;
+    }
+
+    #game canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .counter {
+      position: absolute;
+      top: 20px;
+      left: 22px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-shadow: 0 2px 4px rgba(17, 64, 34, 0.45);
+    }
+
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.92);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    }
+
+
+    #startScreen {
+      position: fixed;
+      z-index: 5;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: linear-gradient(rgba(19, 65, 100, 0.2), rgba(19, 65, 100, 0.38));
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    #startScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .start-card {
+      width: min(420px, 100%);
+      padding: 30px 26px 26px;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 24px;
+      background: rgba(20, 66, 79, 0.72);
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.28);
+      text-align: center;
+      backdrop-filter: blur(7px);
+    }
+
+    .start-card h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 5vw, 2.4rem);
+    }
+
+    .start-card p {
+      margin: 0 0 22px;
+      color: rgba(255, 255, 255, 0.86);
+      line-height: 1.5;
+    }
+
+    #startButton {
+      min-width: 190px;
+      padding: 14px 25px;
+      border: 0;
+      border-radius: 999px;
+      background: #f6ca35;
+      color: #173a2b;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      box-shadow: 0 5px 0 #b28612;
+    }
+
+    #startButton:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #b28612;
+    }
+
+    #thirdPersonQuickToggle {
+      position: fixed;
+      z-index: 4;
+      top: 18px;
+      right: 20px;
+      width: 42px;
+      min-width: 42px;
+      min-height: 42px;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 12px;
+      background: rgba(16, 49, 66, 0.78);
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+    }
+
+    #thirdPersonQuickToggle.active {
+      border-color: #f6ca35;
+      background: #f6ca35;
+      box-shadow: 0 0 0 3px rgba(246, 202, 53, 0.24);
+    }
+
+    #touchControls {
+      display: none;
+      position: fixed;
+      z-index: 4;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    #joystick {
+      position: absolute;
+      z-index: 1;
+      left: 24px;
+      bottom: 28px;
+      width: 124px;
+      height: 124px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-radius: 50%;
+      background: rgba(23, 76, 72, 0.28);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    #joystickKnob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 53px;
+      height: 53px;
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      transform: translate(-50%, -50%);
+    }
+
+    #lookArea {
+      position: absolute;
+      inset: 0;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    @media (pointer: coarse) and (max-width: 900px) {
+      #touchControls {
+        display: block;
+      }
+
+      .crosshair {
+        width: 8px;
+        height: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game" aria-label="Mondo 3D giocabile"></div>
+
+  <div class="hud" aria-hidden="true">
+    <p id="modificationCounter" class="counter">58</p>
+    <div class="crosshair"></div>
+  </div>
+
+  <div id="touchControls" aria-hidden="true">
+    <div id="joystick"><div id="joystickKnob"></div></div>
+    <div id="lookArea"></div>
+  </div>
+
+
+  <button id="thirdPersonQuickToggle" type="button" aria-label="Attiva o disattiva la terza persona" aria-pressed="false"></button>
+
+  <section id="startScreen">
+    <div class="start-card">
+      <h1>Progetto27</h1>
+      <p><br></p>
+      <button id="startButton" type="button">INIZIA</button>
+    </div>
+  </section>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+    <script type="module">
+    import * as THREE from "three";
+    import { DroneController, DRONE_SETTINGS } from "./drone.js?rev=58";
+    import { TerrainWorld } from "./terrain.js";
+
+    // ==========================================================================
+    // CERCA: SETTAGGI SCENA
+    // Parametri generali di cielo, nebbia, camera, luci e qualità del renderer.
+    // ==========================================================================
+    const SCENE_SETTINGS = {
+      backgroundColor: 0x83c9f4, // Colore del cielo e della nebbia.
+      fogNear: 48, // Distanza dalla quale inizia la nebbia.
+      fogFar: 185, // Distanza alla quale la nebbia copre completamente la scena.
+      cameraFov: 74, // Campo visivo verticale della camera, in gradi.
+      cameraNear: 0.1, // Distanza minima renderizzata.
+      cameraFar: 300, // Distanza massima renderizzata.
+      maxPixelRatio: 1.5, // Limite di nitidezza per non appesantire telefoni e GPU.
+      shadowMapSize: 1024, // Risoluzione delle ombre del sole.
+      ambientIntensity: 2.1, // Intensità della luce diffusa del cielo.
+      sunIntensity: 3.2 // Intensità della luce direzionale principale.
+    };
+
+    const REVISION_COUNT = 58;
+    const game = document.getElementById("game");
+    const startScreen = document.getElementById("startScreen");
+    const startButton = document.getElementById("startButton");
+    const thirdPersonButton = document.getElementById("thirdPersonQuickToggle");
+    const modificationCounter = document.getElementById("modificationCounter");
+    const joystick = document.getElementById("joystick");
+    const joystickKnob = document.getElementById("joystickKnob");
+    const lookArea = document.getElementById("lookArea");
+    const crosshair = document.querySelector(".crosshair");
+    modificationCounter.textContent = String(REVISION_COUNT);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(SCENE_SETTINGS.backgroundColor);
+    scene.fog = new THREE.Fog(
+      SCENE_SETTINGS.backgroundColor,
+      SCENE_SETTINGS.fogNear,
+      SCENE_SETTINGS.fogFar
+    );
+
+    const camera = new THREE.PerspectiveCamera(
+      SCENE_SETTINGS.cameraFov,
+      innerWidth / innerHeight,
+      SCENE_SETTINGS.cameraNear,
+      SCENE_SETTINGS.cameraFar
+    );
+    camera.position.set(0, 1.7, 8);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance"
+    });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, SCENE_SETTINGS.maxPixelRatio));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    game.appendChild(renderer.domElement);
+
+    const ambient = new THREE.HemisphereLight(
+      0xd9f4ff,
+      0x5a863e,
+      SCENE_SETTINGS.ambientIntensity
+    );
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xfff4d6, SCENE_SETTINGS.sunIntensity);
+    sun.position.set(-35, 48, 22);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(SCENE_SETTINGS.shadowMapSize, SCENE_SETTINGS.shadowMapSize);
+    sun.shadow.camera.left = -70;
+    sun.shadow.camera.right = 70;
+    sun.shadow.camera.top = 70;
+    sun.shadow.camera.bottom = -70;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 150;
+    scene.add(sun);
+
+    // Le nuvole restano parte dell'allestimento generale della scena.
+    function createCloud(x, y, z, scale = 1) {
+      const cloud = new THREE.Group();
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.84
+      });
+      const parts = [
+        [-1.5, 0, 0, 1.25],
+        [0, 0.25, 0, 1.6],
+        [1.55, 0, 0.1, 1.1],
+        [0.65, -0.15, 0.35, 1.25]
+      ];
+      for (const [px, py, pz, size] of parts) {
+        const puff = new THREE.Mesh(
+          new THREE.SphereGeometry(size * scale, 16, 12),
+          material
+        );
+        puff.position.set(px * scale, py * scale, pz * scale);
+        cloud.add(puff);
+      }
+      cloud.position.set(x, y, z);
+      scene.add(cloud);
+    }
+
+    createCloud(-27, 21, -70, 2.2);
+    createCloud(32, 25, -105, 2.7);
+    createCloud(2, 30, -145, 3.2);
+
+    const terrain = new TerrainWorld(scene, DRONE_SETTINGS.hitboxRadius);
+    terrain.syncAround(camera.position);
+
+    let drone;
+    function beginGame() {
+      if (drone.isStarted) return;
+      startScreen.classList.add("hidden");
+      drone.start();
+      drone.requestPointerLockSafely();
+    }
+
+    drone = new DroneController({
+      scene,
+      camera,
+      renderer,
+      terrain,
+      joystick,
+      joystickKnob,
+      lookArea,
+      crosshair,
+      onStartRequested: beginGame
+    });
+
+    function updateThirdPersonButton() {
+      thirdPersonButton.classList.toggle("active", drone.isThirdPerson);
+      thirdPersonButton.setAttribute("aria-pressed", String(drone.isThirdPerson));
+    }
+
+    startButton.addEventListener("click", beginGame);
+    thirdPersonButton.addEventListener("click", () => {
+      drone.toggleThirdPerson();
+      updateThirdPersonButton();
+    });
+    renderer.domElement.addEventListener("click", () => {
+      if (!drone.isStarted) beginGame();
+      else drone.requestPointerLockSafely();
+    });
+    updateThirdPersonButton();
+
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+      drone.update(delta);
+      renderer.render(scene, camera);
+    }
+
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(devicePixelRatio, SCENE_SETTINGS.maxPixelRatio));
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>

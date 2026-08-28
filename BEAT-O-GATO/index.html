@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download app</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow: hidden;
+      background: #000 url("sfondo.png") center center / contain no-repeat;
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .apk-label {
+      margin: 0;
+      color: #fff;
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-shadow: 2px 2px 0 #171717;
+    }
+
+    .download-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 220px;
+      min-height: 68px;
+      padding: 18px 34px;
+      border: 4px solid #171717;
+      border-radius: 12px;
+      background: #ffd21f;
+      color: #171717;
+      box-shadow: 0 8px 0 #171717, 0 14px 24px rgba(0, 0, 0, 0.35);
+      font-size: clamp(1.25rem, 4vw, 1.8rem);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .download-button:hover {
+      background: #ffe05c;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 0 #171717, 0 16px 28px rgba(0, 0, 0, 0.4);
+    }
+
+    .download-button:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 #171717, 0 8px 14px rgba(0, 0, 0, 0.3);
+    }
+
+    .download-button:focus-visible {
+      outline: 4px solid #fff;
+      outline-offset: 5px;
+    }
+
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- Metti app-release.apk nella stessa cartella di questo file. -->
+    <a id="downloadButton" class="download-button" href="app-release.apk" download>
+      DOWNLOAD
+    </a>
+    <p class="apk-label">LINK APK ANDROID</p>
+  </main>
+</body>
+</html>

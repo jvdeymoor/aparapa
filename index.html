@@ -184,7 +184,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">25</p>
+    <p id="modificationCounter" class="counter">26</p>
     <div class="crosshair"></div>
   </div>
 
@@ -222,7 +222,7 @@
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 25;
+    const MODIFICATION_COUNT = 26;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -271,6 +271,9 @@
     const structureChunks = new Map();
     const buildingHitboxes = new Map();
     const flyerHitboxRadius = 0.38;
+    // DRONE_v1: distanza misurata tra le due punte estreme delle ali.
+    const DRONE_V1_WINGTIP_DISTANCE = 13.5;
+    const DRONE_V1_SCALE = (flyerHitboxRadius * 2) / DRONE_V1_WINGTIP_DISTANCE;
     const projectiles = [];
     const laserPool = [];
     const LASER_GEOMETRY = new THREE.BoxGeometry(0.14, 0.14, 1.6);
@@ -827,11 +830,11 @@
       decorativeDrone.quaternion.copy(flyer.quaternion);
       decorativeDrone.rotateY(Math.PI * 0.5);
       decorativeDrone.rotateX(Math.PI * 0.5);
-      decorativeDrone.scale.setScalar(0.12);
+      decorativeDrone.scale.setScalar(DRONE_V1_SCALE);
       decorativeDrone.visible = true;
       if (decorativeDroneComparisonSphere) {
+        // Il riferimento e il centro geometrico visibile del modello coincidono.
         decorativeDroneComparisonSphere.position.copy(decorativeDrone.position);
-        decorativeDroneComparisonSphere.position.x += 0.8;
         decorativeDroneComparisonSphere.visible = true;
       }
       decorativeDronePlaced = true;
@@ -842,13 +845,22 @@
     decorativeDroneLoader.load(
       "./DRONE_v1.glb",
       gltf => {
-        decorativeDrone = gltf.scene;
-        decorativeDrone.visible = false;
-        decorativeDrone.traverse(object => {
+        const droneModel = gltf.scene;
+        droneModel.traverse(object => {
           if (!object.isMesh) return;
           object.castShadow = true;
           object.receiveShadow = true;
         });
+
+        // Centra il bounding box visibile sull'origine del gruppo di confronto.
+        const modelCenter = new THREE.Box3()
+          .setFromObject(droneModel)
+          .getCenter(new THREE.Vector3());
+        droneModel.position.sub(modelCenter);
+
+        decorativeDrone = new THREE.Group();
+        decorativeDrone.add(droneModel);
+        decorativeDrone.visible = false;
         scene.add(decorativeDrone);
 
         // Riferimento visivo: stesso raggio della hitbox sferica del player.

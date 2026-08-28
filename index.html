@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">39</p>
+    <p id="modificationCounter" class="counter">40</p>
     <div class="crosshair"></div>
   </div>
 
@@ -235,46 +235,78 @@
     }
   </script>
 
-  <script type="module">
+    <script type="module">
     import * as THREE from "three";
-    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { DroneController, DRONE_SETTINGS } from "./drone.js";
+    import { TerrainWorld } from "./terrain.js";
 
+    // ==========================================================================
+    // CERCA: SETTAGGI SCENA
+    // Parametri generali di cielo, nebbia, camera, luci e qualità del renderer.
+    // ==========================================================================
+    const SCENE_SETTINGS = {
+      backgroundColor: 0x83c9f4, // Colore del cielo e della nebbia.
+      fogNear: 48, // Distanza dalla quale inizia la nebbia.
+      fogFar: 185, // Distanza alla quale la nebbia copre completamente la scena.
+      cameraFov: 74, // Campo visivo verticale della camera, in gradi.
+      cameraNear: 0.1, // Distanza minima renderizzata.
+      cameraFar: 300, // Distanza massima renderizzata.
+      maxPixelRatio: 1.5, // Limite di nitidezza per non appesantire telefoni e GPU.
+      shadowMapSize: 1024, // Risoluzione delle ombre del sole.
+      ambientIntensity: 2.1, // Intensità della luce diffusa del cielo.
+      sunIntensity: 3.2 // Intensità della luce direzionale principale.
+    };
+
+    const REVISION_COUNT = 40;
     const game = document.getElementById("game");
     const startScreen = document.getElementById("startScreen");
     const startButton = document.getElementById("startButton");
+    const thirdPersonButton = document.getElementById("thirdPersonQuickToggle");
+    const modificationCounter = document.getElementById("modificationCounter");
     const joystick = document.getElementById("joystick");
     const joystickKnob = document.getElementById("joystickKnob");
     const lookArea = document.getElementById("lookArea");
-    const modificationCounter = document.getElementById("modificationCounter");
     const crosshair = document.querySelector(".crosshair");
-
-    const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
-    // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 39;
-    modificationCounter.textContent = String(MODIFICATION_COUNT);
+    modificationCounter.textContent = String(REVISION_COUNT);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x83c9f4);
-    scene.fog = new THREE.Fog(0x83c9f4, 48, 185);
+    scene.background = new THREE.Color(SCENE_SETTINGS.backgroundColor);
+    scene.fog = new THREE.Fog(
+      SCENE_SETTINGS.backgroundColor,
+      SCENE_SETTINGS.fogNear,
+      SCENE_SETTINGS.fogFar
+    );
 
-    const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.1, 300);
+    const camera = new THREE.PerspectiveCamera(
+      SCENE_SETTINGS.cameraFov,
+      innerWidth / innerHeight,
+      SCENE_SETTINGS.cameraNear,
+      SCENE_SETTINGS.cameraFar
+    );
     camera.position.set(0, 1.7, 8);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance"
+    });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, SCENE_SETTINGS.maxPixelRatio));
     renderer.setSize(innerWidth, innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     game.appendChild(renderer.domElement);
 
-    const ambient = new THREE.HemisphereLight(0xd9f4ff, 0x5a863e, 2.1);
+    const ambient = new THREE.HemisphereLight(
+      0xd9f4ff,
+      0x5a863e,
+      SCENE_SETTINGS.ambientIntensity
+    );
     scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xfff4d6, 3.2);
+    const sun = new THREE.DirectionalLight(0xfff4d6, SCENE_SETTINGS.sunIntensity);
     sun.position.set(-35, 48, 22);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(SCENE_SETTINGS.shadowMapSize, SCENE_SETTINGS.shadowMapSize);
     sun.shadow.camera.left = -70;
     sun.shadow.camera.right = 70;
     sun.shadow.camera.top = 70;
@@ -283,571 +315,14 @@
     sun.shadow.camera.far = 150;
     scene.add(sun);
 
-    // Mondo: città piatta al centro, cintura montagnosa senza edifici e limite invisibile.
-    const TERRAIN = {
-      chunkSize: 64,
-      segments: 32,
-      loadRadius: 3
-    };
-    const WORLD_HALF_SIZE = 192;
-    const CITY_HALF_SIZE = 128;
-    const MOUNTAIN_BELT_SIZE = WORLD_HALF_SIZE - CITY_HALF_SIZE;
-    const MOUNTAIN_HEIGHT = 40;
-    const MAX_BUILDINGS = 400;
-
-    const terrainChunks = new Map();
-    const structureChunks = new Map();
-    const buildingHitboxes = new Map();
-    const flyerHitboxRadius = 0.38;
-    // Diametro della hitbox più un margine del 15% tra le torri.
-    const MIN_BUILDING_CLEARANCE = flyerHitboxRadius * 2 * 1.15;
-    // DRONE_v1: distanza misurata tra le due punte estreme delle ali.
-    const DRONE_V1_WINGTIP_DISTANCE = 13.5;
-    const DRONE_V1_SCALE = (flyerHitboxRadius * 2) / DRONE_V1_WINGTIP_DISTANCE;
-    // La geometria del GLB ha l’asse longitudinale inclinato di 13,2° rispetto
-    // al suo +Y locale: questo offset riallinea il corpo alla direzione reale.
-    const DRONE_V1_FORWARD_AXIS_CORRECTION = THREE.MathUtils.degToRad(13.2);
-    // Punta frontale rispetto al centro geometrico già calcolato dal file GLB.
-    const DRONE_V1_FRONT_TIP_OFFSET = (3.5704264640808105 - 0.24650204181671143) * DRONE_V1_SCALE;
-    const projectiles = [];
-    const laserPool = [];
-    const LASER_GEOMETRY = new THREE.BoxGeometry(0.14, 0.14, 1.6);
-    const LASER_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xffd45c });
-    const LASER_FORWARD = new THREE.Vector3(0, 0, 1);
-    const LASER_HITBOX_SIZE = new THREE.Vector3(0.22, 0.22, 1.6);
-    const LASER_SPEED = 42;
-    const LASER_LIFETIME = 2.2;
-    const MAX_ACTIVE_LASERS = 32;
-    let activeBuildingCount = 0;
-    let loadedCenterX = null;
-    let loadedCenterZ = null;
-    let shotCooldown = 0;
-    let flyer = null;
-
-    const TERRAIN_COLORS = {
-      asphalt: new THREE.Color(0x4b4f50),
-      gravel: new THREE.Color(0x9a958c),
-      dirt: new THREE.Color(0x76523b),
-      concrete: new THREE.Color(0x858887),
-      grass: new THREE.Color(0x5d934e),
-      rock: new THREE.Color(0x6f7472)
-    };
-    const terrainColorScratch = new THREE.Color();
-
-    const BUILDING_MATERIALS = {
-      facades: [
-        new THREE.MeshStandardMaterial({
-          color: 0x6d7378,
-          vertexColors: true,
-          roughness: 0.84,
-          metalness: 0.08
-        }),
-        new THREE.MeshStandardMaterial({
-          color: 0x39444c,
-          vertexColors: true,
-          roughness: 0.72,
-          metalness: 0.16
-        }),
-        new THREE.MeshStandardMaterial({
-          color: 0x8b8f8c,
-          vertexColors: true,
-          roughness: 0.9,
-          metalness: 0.04
-        }),
-        new THREE.MeshStandardMaterial({
-          color: 0x26343d,
-          vertexColors: true,
-          roughness: 0.62,
-          metalness: 0.22
-        })
-      ]
-    };
-
-    function hash2D(x, z) {
-      let h = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(270827, 1442695041);
-      h = Math.imul(h ^ (h >>> 13), 1274126177);
-      return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
-    }
-
-    function smooth(t) {
-      return t * t * (3 - 2 * t);
-    }
-
-    function lerp(a, b, t) {
-      return a + (b - a) * t;
-    }
-
-    function valueNoise(x, z) {
-      const x0 = Math.floor(x);
-      const z0 = Math.floor(z);
-      const tx = smooth(x - x0);
-      const tz = smooth(z - z0);
-      const n00 = hash2D(x0, z0);
-      const n10 = hash2D(x0 + 1, z0);
-      const n01 = hash2D(x0, z0 + 1);
-      const n11 = hash2D(x0 + 1, z0 + 1);
-      return lerp(lerp(n00, n10, tx), lerp(n01, n11, tx), tz);
-    }
-
-    function fractalNoise(x, z, octaves = 4) {
-      let sum = 0;
-      let amplitude = 1;
-      let frequency = 1;
-      let weight = 0;
-      for (let octave = 0; octave < octaves; octave++) {
-        sum += valueNoise(x * frequency, z * frequency) * amplitude;
-        weight += amplitude;
-        amplitude *= 0.5;
-        frequency *= 2;
-      }
-      return sum / weight;
-    }
-
-    function mountainFactorAt(x, z) {
-      const distanceFromCity = Math.max(Math.abs(x), Math.abs(z)) - CITY_HALF_SIZE;
-      return smooth(THREE.MathUtils.clamp(distanceFromCity / MOUNTAIN_BELT_SIZE, 0, 1));
-    }
-
-    function heightAt(x, z) {
-      const mountainFactor = mountainFactorAt(x, z);
-      if (mountainFactor === 0) return 0;
-
-      const broad = fractalNoise(x * 0.018, z * 0.018, 4);
-      const detail = fractalNoise(x * 0.07 + 17.3, z * 0.07 - 9.1, 3);
-      const ridgeNoise = fractalNoise(x * 0.032 - 41.7, z * 0.032 + 28.4, 3);
-      const ridge = 1 - Math.abs(ridgeNoise * 2 - 1);
-      const terrainShape = 0.6
-        + (broad - 0.5) * 0.55
-        + (detail - 0.5) * 0.25
-        + ridge * 0.35;
-      return mountainFactor * Math.max(0, terrainShape) * MOUNTAIN_HEIGHT;
-    }
-
-    function terrainColor(slope, x, z) {
-      const mountainFactor = mountainFactorAt(x, z);
-      const patch = valueNoise(x * 0.035 + 41, z * 0.035 - 17);
-      const detail = valueNoise(x * 0.13 - 83, z * 0.13 + 29);
-      let color;
-
-      if (mountainFactor < 0.02) {
-        if (patch < 0.5) color = TERRAIN_COLORS.asphalt;
-        else if (patch < 0.72) color = TERRAIN_COLORS.gravel;
-        else if (patch < 0.9) color = TERRAIN_COLORS.dirt;
-        else if (patch < 0.965) color = TERRAIN_COLORS.concrete;
-        else color = TERRAIN_COLORS.grass;
-      } else if (slope > 0.18 || mountainFactor > 0.72) {
-        color = TERRAIN_COLORS.rock;
-      } else if (patch < 0.58) {
-        color = TERRAIN_COLORS.grass;
-      } else if (patch < 0.84) {
-        color = TERRAIN_COLORS.dirt;
-      } else {
-        color = TERRAIN_COLORS.rock;
-      }
-
-      terrainColorScratch.copy(color);
-      terrainColorScratch.offsetHSL(0, 0, (detail - 0.5) * 0.12);
-      return terrainColorScratch;
-    }
-
-    function seededRandom(chunkX, chunkZ, slot) {
-      return hash2D(
-        chunkX * 97 + slot * 31 + 13,
-        chunkZ * 89 - slot * 47 - 7
-      );
-    }
-
-    function appendBox(data, minX, maxX, minY, maxY, minZ, maxZ, color) {
-      const faces = [
-        { normal: [0, 0, 1], corners: [[minX, minY, maxZ], [maxX, minY, maxZ], [maxX, maxY, maxZ], [minX, maxY, maxZ]] },
-        { normal: [0, 0, -1], corners: [[maxX, minY, minZ], [minX, minY, minZ], [minX, maxY, minZ], [maxX, maxY, minZ]] },
-        { normal: [1, 0, 0], corners: [[maxX, minY, maxZ], [maxX, minY, minZ], [maxX, maxY, minZ], [maxX, maxY, maxZ]] },
-        { normal: [-1, 0, 0], corners: [[minX, minY, minZ], [minX, minY, maxZ], [minX, maxY, maxZ], [minX, maxY, minZ]] },
-        { normal: [0, 1, 0], corners: [[minX, maxY, maxZ], [maxX, maxY, maxZ], [maxX, maxY, minZ], [minX, maxY, minZ]] },
-        { normal: [0, -1, 0], corners: [[minX, minY, minZ], [maxX, minY, minZ], [maxX, minY, maxZ], [minX, minY, maxZ]] }
-      ];
-
-      for (const face of faces) {
-        const base = data.positions.length / 3;
-        for (const [x, y, z] of face.corners) {
-          data.positions.push(x, y, z);
-          data.normals.push(...face.normal);
-          data.colors.push(...color);
-        }
-        data.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-      }
-    }
-
-    function createAlienBuildingGeometry() {
-      const data = { positions: [], normals: [], colors: [], indices: [] };
-      const columns = [
-        [-0.5, -0.36, [1, 1, 1]],
-        [-0.36, -0.31, [0.18, 0.24, 0.27]],
-        [-0.31, -0.08, [1, 1, 1]],
-        [-0.08, -0.03, [1, 0.68, 0.24]],
-        [-0.03, 0.14, [1, 1, 1]],
-        [0.14, 0.19, [0.18, 0.24, 0.27]],
-        [0.19, 0.5, [1, 1, 1]]
-      ];
-      const levels = 5;
-
-      for (let level = 0; level < levels; level++) {
-        const minY = level / levels;
-        const maxY = (level + 1) / levels;
-        const ringInset = level === 1 || level === 3 ? 0.06 : 0;
-        const span = 1 - ringInset * 2;
-
-        for (const [rawMinX, rawMaxX, color] of columns) {
-          const minX = -0.5 + ringInset + (rawMinX + 0.5) * span;
-          const maxX = -0.5 + ringInset + (rawMaxX + 0.5) * span;
-          const isNiche = color[0] < 0.5;
-          const depthInset = isNiche ? 0.08 : 0;
-          appendBox(
-            data,
-            minX,
-            maxX,
-            minY,
-            maxY,
-            -0.5 + ringInset + depthInset,
-            0.5 - ringInset - depthInset,
-            color
-          );
-        }
-      }
-
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
-      geometry.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
-      geometry.setAttribute("color", new THREE.Float32BufferAttribute(data.colors, 3));
-      geometry.setIndex(data.indices);
-      return geometry;
-    }
-
-    const BUILDING_GEOMETRY = createAlienBuildingGeometry();
-
-    function createBuilding(x, z, kind, scale, facadeIndex) {
-      const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
-      const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
-      const wallHeight = kind === 0
-        ? 18 + scale * 18
-        : kind === 1
-          ? 30 + scale * 28
-          : kind === 2
-            ? 12 + scale * 14
-            : 42 + scale * 34;
-      const baseY = heightAt(x, z);
-      const building = new THREE.Mesh(BUILDING_GEOMETRY, BUILDING_MATERIALS.facades[facadeIndex]);
-
-      building.position.set(x, baseY, z);
-      building.scale.set(width, wallHeight, depth);
-      building.castShadow = true;
-      building.receiveShadow = true;
-
-      building.userData.hitbox = new THREE.Box3(
-        new THREE.Vector3(x - width * 0.5, baseY, z - depth * 0.5),
-        new THREE.Vector3(x + width * 0.5, baseY + wallHeight, z + depth * 0.5)
-      );
-      return building;
-    }
-
-
-    function hasBuildingClearance(candidateHitbox, localHitboxes) {
-      const overlapsWithClearance = hitbox => !(
-        candidateHitbox.max.x + MIN_BUILDING_CLEARANCE <= hitbox.min.x
-        || candidateHitbox.min.x - MIN_BUILDING_CLEARANCE >= hitbox.max.x
-        || candidateHitbox.max.z + MIN_BUILDING_CLEARANCE <= hitbox.min.z
-        || candidateHitbox.min.z - MIN_BUILDING_CLEARANCE >= hitbox.max.z
-      );
-
-      for (const hitboxes of buildingHitboxes.values()) {
-        for (const hitbox of hitboxes) {
-          if (overlapsWithClearance(hitbox)) return false;
-        }
-      }
-      for (const hitbox of localHitboxes) {
-        if (overlapsWithClearance(hitbox)) return false;
-      }
-      return true;
-    }
-
-    function createStructuresChunk(chunkX, chunkZ) {
-      const group = new THREE.Group();
-      const chunkHitboxes = [];
-      const chunkMinX = chunkX * TERRAIN.chunkSize;
-      const chunkMaxX = chunkMinX + TERRAIN.chunkSize;
-      const chunkMinZ = chunkZ * TERRAIN.chunkSize;
-      const chunkMaxZ = chunkMinZ + TERRAIN.chunkSize;
-
-      if (
-        chunkMaxX > -CITY_HALF_SIZE
-        && chunkMinX < CITY_HALF_SIZE
-        && chunkMaxZ > -CITY_HALF_SIZE
-        && chunkMinZ < CITY_HALF_SIZE
-      ) {
-        const count = 20 + Math.floor(seededRandom(chunkX, chunkZ, 0) * 6);
-        const columns = 5;
-        const rows = 5;
-
-        for (let index = 0; index < count; index++) {
-          if (activeBuildingCount >= MAX_BUILDINGS) break;
-
-          const slot = index * 11 + 1;
-          const column = index % columns;
-          const row = Math.floor(index / columns) % rows;
-          const jitterX = (seededRandom(chunkX, chunkZ, slot) - 0.5) * 4;
-          const jitterZ = (seededRandom(chunkX, chunkZ, slot + 1) - 0.5) * 4;
-          const localX = 5 + column * 12 + jitterX;
-          const localZ = 5 + row * 12 + jitterZ;
-          const kind = Math.floor(seededRandom(chunkX, chunkZ, slot + 2) * 4);
-          const scale = 0.6 + seededRandom(chunkX, chunkZ, slot + 3) * 0.85;
-          const width = kind === 1 ? 6 + scale * 2.6 : 8 + scale * 3.8;
-          const depth = kind === 1 ? 6 + scale * 2.4 : 8 + scale * 3.4;
-          const worldX = chunkX * TERRAIN.chunkSize + localX;
-          const worldZ = chunkZ * TERRAIN.chunkSize + localZ;
-
-          // I palazzi restano nel blocco piatto centrale; la cintura esterna è libera.
-          if (
-            Math.abs(worldX) + width * 0.5 > CITY_HALF_SIZE
-            || Math.abs(worldZ) + depth * 0.5 > CITY_HALF_SIZE
-          ) {
-            continue;
-          }
-
-          const baseY = heightAt(worldX, worldZ);
-          const candidateHitbox = new THREE.Box3(
-            new THREE.Vector3(worldX - width * 0.5, baseY, worldZ - depth * 0.5),
-            new THREE.Vector3(worldX + width * 0.5, baseY + 76, worldZ + depth * 0.5)
-          );
-          if (!hasBuildingClearance(candidateHitbox, chunkHitboxes)) continue;
-
-          const building = createBuilding(
-            worldX,
-            worldZ,
-            kind,
-            scale,
-            Math.floor(seededRandom(chunkX, chunkZ, slot + 4) * BUILDING_MATERIALS.facades.length)
-          );
-          group.add(building);
-          chunkHitboxes.push(building.userData.hitbox);
-          activeBuildingCount++;
-        }
-      }
-
-      group.userData.buildingCount = chunkHitboxes.length;
-      buildingHitboxes.set(chunkKey(chunkX, chunkZ), chunkHitboxes);
-      scene.add(group);
-      return group;
-    }
-
-    function disposeStructureGroup(group) {
-      activeBuildingCount = Math.max(0, activeBuildingCount - (group.userData.buildingCount || 0));
-      group.clear();
-    }
-
-    const TERRAIN_INDEX = (() => {
-      const indices = [];
-      const rowStride = TERRAIN.segments + 1;
-      for (let row = 0; row < TERRAIN.segments; row++) {
-        for (let column = 0; column < TERRAIN.segments; column++) {
-          const a = row * rowStride + column;
-          const b = a + 1;
-          const d = (row + 1) * rowStride + column;
-          const c = d + 1;
-          indices.push(a, d, b, b, d, c);
-        }
-      }
-      return new Uint16Array(indices);
-    })();
-
-    function createTerrainChunk(chunkX, chunkZ) {
-      const size = TERRAIN.chunkSize;
-      const segments = TERRAIN.segments;
-      const half = size * 0.5;
-      const worldOriginX = chunkX * size + half;
-      const worldOriginZ = chunkZ * size + half;
-      const rowStride = segments + 1;
-      const vertexCount = rowStride * rowStride;
-      const positions = new Float32Array(vertexCount * 3);
-      const colors = new Float32Array(vertexCount * 3);
-      const heights = new Float32Array(vertexCount);
-      const step = size / segments;
-
-      for (let row = 0; row <= segments; row++) {
-        for (let column = 0; column <= segments; column++) {
-          const vertexIndex = row * rowStride + column;
-          const localX = -half + column * step;
-          const localZ = -half + row * step;
-          const worldX = worldOriginX + localX;
-          const worldZ = worldOriginZ + localZ;
-          const height = heightAt(worldX, worldZ);
-
-          heights[vertexIndex] = height;
-          positions[vertexIndex * 3] = localX;
-          positions[vertexIndex * 3 + 1] = height;
-          positions[vertexIndex * 3 + 2] = localZ;
-        }
-      }
-
-      for (let row = 0; row <= segments; row++) {
-        for (let column = 0; column <= segments; column++) {
-          const vertexIndex = row * rowStride + column;
-          const left = heights[row * rowStride + Math.max(0, column - 1)];
-          const right = heights[row * rowStride + Math.min(segments, column + 1)];
-          const previousRow = Math.max(0, row - 1) * rowStride + column;
-          const nextRow = Math.min(segments, row + 1) * rowStride + column;
-          const slopeX = Math.abs(right - left) / (column === 0 || column === segments ? step : step * 2);
-          const slopeZ = Math.abs(heights[nextRow] - heights[previousRow])
-            / (row === 0 || row === segments ? step : step * 2);
-          const worldX = worldOriginX - half + column * step;
-          const worldZ = worldOriginZ - half + row * step;
-          const color = terrainColor(Math.max(slopeX, slopeZ), worldX, worldZ);
-
-          colors[vertexIndex * 3] = color.r;
-          colors[vertexIndex * 3 + 1] = color.g;
-          colors[vertexIndex * 3 + 2] = color.b;
-        }
-      }
-
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-      geometry.setIndex(new THREE.BufferAttribute(TERRAIN_INDEX, 1));
-      geometry.computeVertexNormals();
-
-      const mesh = new THREE.Mesh(
-        geometry,
-        new THREE.MeshStandardMaterial({
-          vertexColors: true,
-          roughness: 1,
-          metalness: 0
-        })
-      );
-      mesh.position.set(worldOriginX, 0, worldOriginZ);
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-      return mesh;
-    }
-
-    function chunkKey(chunkX, chunkZ) {
-      return chunkX + "," + chunkZ;
-    }
-
-    function syncTerrainChunks() {
-      const focusX = flyer ? flyer.position.x : camera.position.x;
-      const focusZ = flyer ? flyer.position.z : camera.position.z;
-      const centerX = Math.floor(focusX / TERRAIN.chunkSize);
-      const centerZ = Math.floor(focusZ / TERRAIN.chunkSize);
-
-      if (centerX === loadedCenterX && centerZ === loadedCenterZ) return;
-
-      const needed = new Set();
-      for (let dz = -TERRAIN.loadRadius; dz <= TERRAIN.loadRadius; dz++) {
-        for (let dx = -TERRAIN.loadRadius; dx <= TERRAIN.loadRadius; dx++) {
-          const chunkX = centerX + dx;
-          const chunkZ = centerZ + dz;
-          const key = chunkKey(chunkX, chunkZ);
-          needed.add(key);
-
-          if (!terrainChunks.has(key)) {
-            terrainChunks.set(key, createTerrainChunk(chunkX, chunkZ));
-          }
-          if (!structureChunks.has(key)) {
-            structureChunks.set(key, createStructuresChunk(chunkX, chunkZ));
-          }
-        }
-      }
-
-      for (const [key, mesh] of terrainChunks) {
-        if (!needed.has(key)) {
-          scene.remove(mesh);
-          mesh.geometry.dispose();
-          mesh.material.dispose();
-          terrainChunks.delete(key);
-        }
-      }
-
-      for (const [key, group] of structureChunks) {
-        if (!needed.has(key)) {
-          scene.remove(group);
-          disposeStructureGroup(group);
-          buildingHitboxes.delete(key);
-          structureChunks.delete(key);
-        }
-      }
-
-      loadedCenterX = centerX;
-      loadedCenterZ = centerZ;
-    }
-
-    syncTerrainChunks();
-
-    function spawnClearance(x, z) {
-      let nearest = Infinity;
-      for (const hitboxes of buildingHitboxes.values()) {
-        for (const hitbox of hitboxes) {
-          const dx = x < hitbox.min.x ? hitbox.min.x - x : x > hitbox.max.x ? x - hitbox.max.x : 0;
-          const dz = z < hitbox.min.z ? hitbox.min.z - z : z > hitbox.max.z ? z - hitbox.max.z : 0;
-          nearest = Math.min(nearest, Math.hypot(dx, dz));
-        }
-      }
-      return nearest;
-    }
-
-    function findSafeSpawn() {
-      const probe = new THREE.Sphere();
-      const center = new THREE.Vector3();
-      let best = null;
-      let bestClearance = -Infinity;
-
-      // Cerca il punto più libero all’interno del blocco cittadino.
-      const spawnLimit = CITY_HALF_SIZE - 16;
-      for (let x = -spawnLimit; x <= spawnLimit; x += 8) {
-        for (let z = -spawnLimit; z <= spawnLimit; z += 8) {
-          const y = heightAt(x, z) + 110;
-          center.set(x, y, z);
-          probe.set(center, flyerHitboxRadius);
-          let blocked = false;
-          for (const hitboxes of buildingHitboxes.values()) {
-            for (const hitbox of hitboxes) {
-              if (probe.intersectsBox(hitbox)) {
-                blocked = true;
-                break;
-              }
-            }
-            if (blocked) break;
-          }
-          if (!blocked && spawnClearance(x, z) > bestClearance) {
-            bestClearance = spawnClearance(x, z);
-            best = { x, y, z };
-          }
-        }
-      }
-
-      return best || { x: 0, y: heightAt(0, 0) + 110, z: 0 };
-    }
-
-    // Il drone giocabile è un controller invisibile: conserva posizione, rotazione,
-    // hitbox e fisica, senza trascinare con sé il modello estetico.
-    flyer = new THREE.Group();
-    // La direzione di volo usa yaw globale e pitch locale: il modello deve
-    // comporre le rotazioni nello stesso ordine per restare allineato alla marcia.
-    flyer.rotation.order = "YXZ";
-    // Pivot esclusivamente visivo: corregge la posa del GLB senza alterare
-    // controller, camera, fisica o hitbox sferica.
-    const droneVisualPivot = new THREE.Group();
-    flyer.add(droneVisualPivot);
-    const safeSpawn = findSafeSpawn();
-    flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
-    flyer.userData.hitbox = new THREE.Sphere();
-    scene.add(flyer);
-
-    // Nessun modello 3D estetico per ora: resta attivo solo il controller
-    // invisibile del drone con la sua hitbox e la fisica di collisione.
-    // Nessun albero: la scena resta una metropoli urbana compatta.
-
+    // Le nuvole restano parte dell'allestimento generale della scena.
     function createCloud(x, y, z, scale = 1) {
       const cloud = new THREE.Group();
-      const material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.84 });
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.84
+      });
       const parts = [
         [-1.5, 0, 0, 1.25],
         [0, 0.25, 0, 1.6],
@@ -855,7 +330,10 @@
         [0.65, -0.15, 0.35, 1.25]
       ];
       for (const [px, py, pz, size] of parts) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(size * scale, 16, 12), material);
+        const puff = new THREE.Mesh(
+          new THREE.SphereGeometry(size * scale, 16, 12),
+          material
+        );
         puff.position.set(px * scale, py * scale, pz * scale);
         cloud.add(puff);
       }
@@ -867,547 +345,57 @@
     createCloud(32, 25, -105, 2.7);
     createCloud(2, 30, -145, 3.2);
 
-    const keys = new Set();
-    let yaw = 0;
-    let pitch = 0;
-    const cameraPosition = new THREE.Vector3();
-    const cameraLookTarget = new THREE.Vector3();
-    const flightDirection = new THREE.Vector3(0, 0, -1);
-    const bounceVelocity = new THREE.Vector3();
-    const bounceTilt = new THREE.Vector3();
-    const frameStartPosition = new THREE.Vector3();
-    const actualMovement = new THREE.Vector3();
-    const projectedAimPoint = new THREE.Vector3();
-    let visualFlightPitch = 0;
-    let bankTurnInput = 0;
-    let bankInputHold = 0;
-    let turnBank = 0;
-    const MAX_TURN_BANK = THREE.MathUtils.degToRad(50);
-    let started = false;
-    const clock = new THREE.Clock();
-    const mobileMove = { x: 0, y: 0 };
-    let joystickPointer = null;
-    let lookPointer = null;
-    let previousLookX = 0;
-    let previousLookY = 0;
-    let mouseLookPointer = null;
-    let decorativeDrone = null;
-    let decorativeDronePlaced = false;
+    const terrain = new TerrainWorld(scene, DRONE_SETTINGS.hitboxRadius);
+    terrain.syncAround(camera.position);
 
-    function placeDecorativeDrone() {
-      if (!started || !decorativeDrone || decorativeDronePlaced) return;
-
-      // Il modello è figlio del controller: il suo centro coincide con la hitbox.
-      decorativeDrone.position.set(0, 0, 0);
-      // Corregge sia l’orientamento degli assi sia l’inclinazione intrinseca
-      // della geometria, così il corpo punta lungo l’effettiva traiettoria.
-      decorativeDrone.rotation.set(0, 0, 0);
-      decorativeDrone.rotateY(Math.PI);
-      decorativeDrone.rotateX(Math.PI * 0.5 + DRONE_V1_FORWARD_AXIS_CORRECTION);
-      decorativeDrone.scale.setScalar(DRONE_V1_SCALE);
-      decorativeDrone.visible = true;
-      decorativeDronePlaced = true;
-    }
-
-
-    const decorativeDroneLoader = new GLTFLoader();
-    decorativeDroneLoader.load(
-      "./DRONE_v1.glb",
-      gltf => {
-        const droneModel = gltf.scene;
-        droneModel.traverse(object => {
-          if (!object.isMesh) return;
-          object.castShadow = true;
-          object.receiveShadow = true;
-        });
-
-        // Centra il bounding box visibile sull'origine della hitbox del player.
-        const modelCenter = new THREE.Box3()
-          .setFromObject(droneModel)
-          .getCenter(new THREE.Vector3());
-        droneModel.position.sub(modelCenter);
-
-        decorativeDrone = new THREE.Group();
-        decorativeDrone.add(droneModel);
-        decorativeDrone.visible = false;
-        // Modello, camera e hitbox condividono il controller del player.
-        droneVisualPivot.add(decorativeDrone);
-        placeDecorativeDrone();
-      },
-      undefined,
-      error => console.error("Impossibile caricare DRONE_v1.glb", error)
-    );
-
-    function requestPointerLockSafely() {
-      if (!matchMedia("(pointer: fine)").matches || document.pointerLockElement === renderer.domElement) {
-        return;
-      }
-      try {
-        const request = renderer.domElement.requestPointerLock?.();
-        request?.catch?.(() => {
-          // Alcuni browser incorporati rifiutano il pointer lock: resta attivo il drag fallback.
-        });
-      } catch {
-        // Il drag sul canvas continua a funzionare anche senza pointer lock.
-      }
-    }
-
-    function enterImmersiveMode() {
-      // Il fullscreen non viene più richiesto automaticamente.
-      // Il drag fallback resta disponibile se il browser rifiuta il pointer lock.
-      requestPointerLockSafely();
-    }
-
+    let drone;
     function beginGame() {
-      started = true;
+      if (drone.isStarted) return;
       startScreen.classList.add("hidden");
-      enterImmersiveMode();
-      placeDecorativeDrone();
+      drone.start();
+      drone.requestPointerLockSafely();
+    }
+
+    drone = new DroneController({
+      scene,
+      camera,
+      renderer,
+      terrain,
+      joystick,
+      joystickKnob,
+      lookArea,
+      crosshair,
+      onStartRequested: beginGame
+    });
+
+    function updateThirdPersonButton() {
+      thirdPersonButton.classList.toggle("active", drone.isThirdPerson);
+      thirdPersonButton.setAttribute("aria-pressed", String(drone.isThirdPerson));
     }
 
     startButton.addEventListener("click", beginGame);
-
-    let thirdPersonEnabled = false;
-    // Camera più vicina della configurazione originaria.
-    const THIRD_PERSON_DISTANCE = 2;
-    const THIRD_PERSON_HEIGHT = 1.25;
-    const cameraFlatForward = new THREE.Vector3();
-
-    function setThirdPersonEnabled(enabled) {
-      thirdPersonEnabled = enabled;
-      thirdPersonQuickToggle.classList.toggle("active", enabled);
-      thirdPersonQuickToggle.setAttribute("aria-pressed", String(enabled));
-      if (document.pointerLockElement === renderer.domElement) {
-        document.exitPointerLock?.();
-      }
-    }
-
-    thirdPersonQuickToggle.addEventListener("click", () => {
-      setThirdPersonEnabled(!thirdPersonEnabled);
+    thirdPersonButton.addEventListener("click", () => {
+      drone.toggleThirdPerson();
+      updateThirdPersonButton();
     });
-    setThirdPersonEnabled(false);
-
     renderer.domElement.addEventListener("click", () => {
-      if (!started) {
-        beginGame();
-      } else {
-        requestPointerLockSafely();
-      }
+      if (!drone.isStarted) beginGame();
+      else drone.requestPointerLockSafely();
     });
+    updateThirdPersonButton();
 
-    addEventListener("keydown", event => {
-      if (event.key.toLowerCase() !== "w") return;
-      keys.add("w");
-      event.preventDefault();
-    });
-    addEventListener("keyup", event => {
-      if (event.key.toLowerCase() === "w") keys.delete("w");
-    });
-
-    function registerTurnBankInput(horizontalDelta) {
-      if (Math.abs(horizontalDelta) < 0.01) return;
-      // Accumula il gesto orizzontale: una virata mantenuta raggiunge il rollio
-      // pieno, mentre una correzione breve produce soltanto una piccola inclinazione.
-      if (bankTurnInput * horizontalDelta < 0) bankTurnInput *= 0.35;
-      bankTurnInput = THREE.MathUtils.clamp(
-        bankTurnInput + horizontalDelta / 45,
-        -1,
-        1
-      );
-      bankInputHold = 0.14;
-    }
-
-    addEventListener("mousemove", event => {
-      if (document.pointerLockElement !== renderer.domElement || !started) return;
-      registerTurnBankInput(event.movementX);
-      yaw -= event.movementX * 0.0022;
-      pitch -= event.movementY * 0.0022;
-      pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
-    });
-
-    renderer.domElement.addEventListener("pointerdown", event => {
-      if (!started || !matchMedia("(pointer: fine)").matches) return;
-      if (event.button === 0) shootProjectile();
-      mouseLookPointer = event.pointerId;
-      previousLookX = event.clientX;
-      previousLookY = event.clientY;
-      renderer.domElement.setPointerCapture(event.pointerId);
-    });
-
-    renderer.domElement.addEventListener("pointermove", event => {
-      // Fallback per browser che non consentono il pointer lock:
-      // clicca e trascina sul canvas per guardarti intorno.
-      if (!started || event.pointerId !== mouseLookPointer || document.pointerLockElement === renderer.domElement) return;
-      const lookDeltaX = event.clientX - previousLookX;
-      const lookDeltaY = event.clientY - previousLookY;
-      registerTurnBankInput(lookDeltaX);
-      yaw -= lookDeltaX * 0.006;
-      pitch -= lookDeltaY * 0.006;
-      pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
-      previousLookX = event.clientX;
-      previousLookY = event.clientY;
-    });
-
-    function stopMouseLooking(event) {
-      if (event.pointerId !== mouseLookPointer) return;
-      mouseLookPointer = null;
-      if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
-        renderer.domElement.releasePointerCapture(event.pointerId);
-      }
-    }
-
-    renderer.domElement.addEventListener("pointerup", stopMouseLooking);
-    renderer.domElement.addEventListener("pointercancel", stopMouseLooking);
-
-    function updateJoystick(event) {
-      const rect = joystick.getBoundingClientRect();
-      const radius = rect.width * 0.5;
-      let dx = event.clientX - (rect.left + radius);
-      let dy = event.clientY - (rect.top + radius);
-      const distance = Math.hypot(dx, dy);
-      if (distance > radius) {
-        dx = dx / distance * radius;
-        dy = dy / distance * radius;
-      }
-      mobileMove.x = dx / radius;
-      mobileMove.y = dy / radius;
-      joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    }
-
-    function resetJoystick() {
-      joystickPointer = null;
-      mobileMove.x = 0;
-      mobileMove.y = 0;
-      joystickKnob.style.transform = "translate(-50%, -50%)";
-    }
-
-    joystick.addEventListener("pointerdown", event => {
-      if (!started) beginGame();
-      joystickPointer = event.pointerId;
-      joystick.setPointerCapture(event.pointerId);
-      updateJoystick(event);
-    });
-    joystick.addEventListener("pointermove", event => {
-      if (event.pointerId === joystickPointer) updateJoystick(event);
-    });
-    joystick.addEventListener("pointerup", resetJoystick);
-    joystick.addEventListener("pointercancel", resetJoystick);
-
-    lookArea.addEventListener("pointerdown", event => {
-      if (!started) beginGame();
-      lookPointer = event.pointerId;
-      previousLookX = event.clientX;
-      previousLookY = event.clientY;
-      lookArea.setPointerCapture(event.pointerId);
-    });
-    lookArea.addEventListener("pointermove", event => {
-      if (event.pointerId !== lookPointer) return;
-      const lookDeltaX = event.clientX - previousLookX;
-      const lookDeltaY = event.clientY - previousLookY;
-      registerTurnBankInput(lookDeltaX);
-      yaw -= lookDeltaX * 0.009;
-      pitch -= lookDeltaY * 0.009;
-      pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
-      previousLookX = event.clientX;
-      previousLookY = event.clientY;
-    });
-    function stopLooking(event) {
-      if (event.pointerId === lookPointer) lookPointer = null;
-    }
-    lookArea.addEventListener("pointerup", stopLooking);
-    lookArea.addEventListener("pointercancel", stopLooking);
-
-    function acquireLaser() {
-      const mesh = laserPool.pop() || new THREE.Mesh(LASER_GEOMETRY, LASER_MATERIAL);
-      mesh.visible = true;
-      scene.add(mesh);
-      return mesh;
-    }
-
-    function releaseLaser(mesh) {
-      mesh.visible = false;
-      scene.remove(mesh);
-      laserPool.push(mesh);
-    }
-
-    function shootProjectile() {
-      if (!flyer || projectiles.length >= MAX_ACTIVE_LASERS) return;
-
-      const shot = acquireLaser();
-      shot.position.copy(flyer.position).addScaledVector(flightDirection, 1.35);
-      shot.position.y += 0.1;
-      shot.quaternion.setFromUnitVectors(LASER_FORWARD, flightDirection);
-
-      projectiles.push({
-        mesh: shot,
-        velocity: flightDirection.clone().multiplyScalar(LASER_SPEED),
-        life: LASER_LIFETIME,
-        hitbox: new THREE.Box3()
-      });
-    }
-
-    function updateProjectiles(delta) {
-      for (let index = projectiles.length - 1; index >= 0; index--) {
-        const projectile = projectiles[index];
-        projectile.life -= delta;
-        projectile.mesh.position.addScaledVector(projectile.velocity, delta);
-        projectile.hitbox.setFromCenterAndSize(projectile.mesh.position, LASER_HITBOX_SIZE);
-
-        let hitBuilding = false;
-        const projectileChunkX = Math.floor(projectile.mesh.position.x / TERRAIN.chunkSize);
-        const projectileChunkZ = Math.floor(projectile.mesh.position.z / TERRAIN.chunkSize);
-
-        for (let dz = -1; dz <= 1 && !hitBuilding; dz++) {
-          for (let dx = -1; dx <= 1 && !hitBuilding; dx++) {
-            const hitboxes = buildingHitboxes.get(chunkKey(projectileChunkX + dx, projectileChunkZ + dz));
-            if (!hitboxes) continue;
-            for (const hitbox of hitboxes) {
-              if (projectile.hitbox.intersectsBox(hitbox)) {
-                hitBuilding = true;
-                break;
-              }
-            }
-          }
-        }
-
-        if (projectile.life <= 0 || hitBuilding) {
-          releaseLaser(projectile.mesh);
-          projectiles.splice(index, 1);
-        }
-      }
-    }
-
-    function updateFlyerHitbox() {
-      if (!flyer?.userData.hitbox) return;
-      flyer.userData.hitbox.set(flyer.position, flyerHitboxRadius);
-    }
-
-    function findFlyerBuildingCollision() {
-      if (!flyer?.userData.hitbox) return null;
-
-      const closestPoint = new THREE.Vector3();
-      const separation = new THREE.Vector3();
-      for (const hitboxes of buildingHitboxes.values()) {
-        for (const hitbox of hitboxes) {
-          if (!flyer.userData.hitbox.intersectsBox(hitbox)) continue;
-
-          closestPoint.set(
-            THREE.MathUtils.clamp(flyer.position.x, hitbox.min.x, hitbox.max.x),
-            THREE.MathUtils.clamp(flyer.position.y, hitbox.min.y, hitbox.max.y),
-            THREE.MathUtils.clamp(flyer.position.z, hitbox.min.z, hitbox.max.z)
-          );
-          separation.copy(flyer.position).sub(closestPoint);
-
-          if (separation.lengthSq() > 0.000001) {
-            const distance = separation.length();
-            return {
-              normal: separation.multiplyScalar(1 / distance),
-              penetration: Math.max(0, flyerHitboxRadius - distance)
-            };
-          }
-
-          // Se il centro è dentro l'AABB, scegli la faccia con penetrazione minore.
-          const distances = [
-            { axis: "x", distance: flyer.position.x - hitbox.min.x, sign: 1 },
-            { axis: "x", distance: hitbox.max.x - flyer.position.x, sign: -1 },
-            { axis: "y", distance: flyer.position.y - hitbox.min.y, sign: 1 },
-            { axis: "y", distance: hitbox.max.y - flyer.position.y, sign: -1 },
-            { axis: "z", distance: flyer.position.z - hitbox.min.z, sign: 1 },
-            { axis: "z", distance: hitbox.max.z - flyer.position.z, sign: -1 }
-          ];
-          distances.sort((a, b) => a.distance - b.distance);
-          const normal = new THREE.Vector3();
-          normal[distances[0].axis] = distances[0].sign;
-          return {
-            normal,
-            penetration: flyerHitboxRadius + distances[0].distance
-          };
-        }
-      }
-      return null;
-    }
-
-    function enforceWorldBoundary() {
-      const limit = WORLD_HALF_SIZE - flyerHitboxRadius;
-
-      if (flyer.position.x < -limit) {
-        flyer.position.x = -limit;
-        bounceVelocity.x = Math.max(0, bounceVelocity.x);
-      } else if (flyer.position.x > limit) {
-        flyer.position.x = limit;
-        bounceVelocity.x = Math.min(0, bounceVelocity.x);
-      }
-
-      if (flyer.position.z < -limit) {
-        flyer.position.z = -limit;
-        bounceVelocity.z = Math.max(0, bounceVelocity.z);
-      } else if (flyer.position.z > limit) {
-        flyer.position.z = limit;
-        bounceVelocity.z = Math.min(0, bounceVelocity.z);
-      }
-    }
-
-    function moveFlyer(delta) {
-      if (!started || !flyer) return;
-
-      frameStartPosition.copy(flyer.position);
-      let throttle = 0;
-      if (keys.has("w")) throttle = 1;
-
-      // Joystick mobile: avanti accelera e spara, indietro oltre metà raggio
-      // disattiva l'acceleratore ma continua a sparare da fermo.
-      const joystickReverse = joystickPointer !== null && mobileMove.y > 0.5;
-      const stickShooting = joystickPointer !== null && Math.abs(mobileMove.y) > 0.5;
-      if (joystickPointer !== null) {
-        throttle = joystickReverse ? 0 : 1;
-      }
-
-      shotCooldown = Math.max(0, shotCooldown - delta);
-      if (stickShooting && shotCooldown <= 0) {
-        shootProjectile();
-        shotCooldown = 0.18;
-      }
-
-      const speed = throttle < 0 ? 5.5 : 13 * throttle;
-      flightDirection.set(
-        -Math.sin(yaw) * Math.cos(pitch),
-        Math.sin(pitch),
-        -Math.cos(yaw) * Math.cos(pitch)
-      );
-
-      // Spinta costante per rendere sempre visibile il verso di marcia.
-      const movementVelocity = flightDirection.clone().multiplyScalar(speed);
-      flyer.position.addScaledVector(movementVelocity, delta);
-      flyer.position.addScaledVector(bounceVelocity, delta);
-      bounceVelocity.multiplyScalar(Math.exp(-3.8 * delta));
-      bounceTilt.multiplyScalar(Math.exp(-5.5 * delta));
-
-      const groundHeight = heightAt(flyer.position.x, flyer.position.z);
-      flyer.position.y = THREE.MathUtils.clamp(
-        flyer.position.y,
-        groundHeight + 4.5,
-        140
-      );
-
-      // Il limite invisibile chiude l’area giocabile senza aggiungere geometria.
-      enforceWorldBoundary();
-
-      // Carica il chunk eventualmente attraversato prima di testare la collisione.
-      syncTerrainChunks();
-      updateFlyerHitbox();
-      const collision = findFlyerBuildingCollision();
-      if (collision) {
-        // Corregge solo la penetrazione reale: il drone resta aderente alla
-        // superficie e non viene arretrato con un margine navigabile aggiuntivo.
-        flyer.position.addScaledVector(collision.normal, collision.penetration + 0.001);
-
-        // L'impulso segue la normale della superficie, quindi tiene conto
-        // dell'angolo reale senza annullare l'accelerazione del pilota.
-        const incomingVelocity = movementVelocity.clone().add(bounceVelocity);
-        const impactSpeed = Math.max(0, -incomingVelocity.dot(collision.normal));
-        const reboundSpeed = Math.min(6.5, Math.max(2.8, impactSpeed * 0.72));
-        bounceVelocity.copy(collision.normal).multiplyScalar(reboundSpeed);
-        flyer.position.addScaledVector(bounceVelocity, delta);
-
-        // Tilt elastico di 3–7 gradi: asse Y per la deviazione laterale,
-        // asse X quando l'urto avviene durante una salita/discesa.
-        const localNormal = collision.normal.clone().applyAxisAngle(
-          new THREE.Vector3(0, 1, 0),
-          -yaw
-        );
-        const normalizedImpact = THREE.MathUtils.clamp(
-          impactSpeed / Math.max(1, movementVelocity.length()),
-          0,
-          1
-        );
-        const tilt = THREE.MathUtils.degToRad(3 + normalizedImpact * 4);
-        const verticalRatio = THREE.MathUtils.clamp(
-          Math.abs(movementVelocity.y) / Math.max(1, movementVelocity.length()),
-          0,
-          1
-        );
-        bounceTilt.y = THREE.MathUtils.clamp(localNormal.x * tilt, -tilt, tilt);
-        bounceTilt.x = -Math.sign(movementVelocity.y) * tilt * verticalRatio;
-        updateFlyerHitbox();
-      }
-
-      // La posa verticale del GLB segue lo spostamento realmente ottenuto.
-      // Al tetto o al terreno il modello non resta impennato mentre la quota è bloccata.
-      actualMovement.copy(flyer.position).sub(frameStartPosition);
-      let targetVisualPitch = pitch;
-      if (throttle > 0 && actualMovement.lengthSq() > 0.000001) {
-        targetVisualPitch = Math.atan2(
-          actualMovement.y,
-          Math.hypot(actualMovement.x, actualMovement.z)
-        );
-      }
-      visualFlightPitch = THREE.MathUtils.damp(visualFlightPitch, targetVisualPitch, 10, delta);
-
-      // Rollio da caccia: attacco rapido durante la virata, breve tenuta e
-      // ritorno più morbido quando il gesto orizzontale termina.
-      bankInputHold = Math.max(0, bankInputHold - delta);
-      if (bankInputHold <= 0) {
-        bankTurnInput = THREE.MathUtils.damp(bankTurnInput, 0, 5, delta);
-      }
-      const bankStrength = throttle > 0 ? 1 : 0.6;
-      const targetBank = -bankTurnInput * MAX_TURN_BANK * bankStrength;
-      const bankResponse = Math.abs(targetBank) > Math.abs(turnBank) ? 11 : 4.5;
-      turnBank = THREE.MathUtils.damp(turnBank, targetBank, bankResponse, delta);
-
-      flyer.rotation.set(pitch + bounceTilt.x, yaw + bounceTilt.y, bounceTilt.z);
-      droneVisualPivot.rotation.set(visualFlightPitch - pitch, 0, turnBank);
-    }
-
-    function updateCrosshair() {
-      if (!thirdPersonEnabled || !flyer) {
-        crosshair.style.left = "50%";
-        crosshair.style.top = "50%";
-        return;
-      }
-
-      // Il mirino indica la traiettoria dei laser; se il punto è fuori campo,
-      // resta sul bordo nella direzione corretta senza coprire il modello.
-      projectedAimPoint.copy(flyer.position).addScaledVector(flightDirection, 18);
-      projectedAimPoint.project(camera);
-      const margin = 16;
-      const screenX = (projectedAimPoint.x * 0.5 + 0.5) * innerWidth;
-      const screenY = (-projectedAimPoint.y * 0.5 + 0.5) * innerHeight;
-      crosshair.style.left = `${THREE.MathUtils.clamp(screenX, margin, innerWidth - margin)}px`;
-      crosshair.style.top = `${THREE.MathUtils.clamp(screenY, margin, innerHeight - margin)}px`;
-    }
-
+    const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
-      moveFlyer(delta);
-      updateProjectiles(delta);
-
-      if (flyer) {
-        if (thirdPersonEnabled) {
-          // Camera d'inseguimento: segue il drone sulla direzione orizzontale.
-          cameraFlatForward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-          cameraPosition.copy(flyer.position);
-          cameraPosition.addScaledVector(cameraFlatForward, -THIRD_PERSON_DISTANCE);
-          cameraPosition.y += THIRD_PERSON_HEIGHT;
-          cameraLookTarget.copy(flyer.position);
-        } else {
-          // Visuale in prima persona dalla punta frontale del modello.
-          cameraPosition.set(0, 0, -DRONE_V1_FRONT_TIP_OFFSET).applyQuaternion(flyer.quaternion);
-          cameraPosition.add(flyer.position);
-          cameraLookTarget.copy(cameraPosition).addScaledVector(flightDirection, 1.4);
-        }
-        camera.position.copy(cameraPosition);
-        camera.lookAt(cameraLookTarget);
-        camera.updateMatrixWorld();
-        updateCrosshair();
-      }
-
+      drone.update(delta);
       renderer.render(scene, camera);
     }
 
     addEventListener("resize", () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(devicePixelRatio, SCENE_SETTINGS.maxPixelRatio));
       renderer.setSize(innerWidth, innerHeight);
     });
 
@@ -1415,4 +403,5 @@
   </script>
 </body>
 </html>
+
 

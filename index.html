@@ -184,7 +184,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">26</p>
+    <p id="modificationCounter" class="counter">27</p>
     <div class="crosshair"></div>
   </div>
 
@@ -222,7 +222,7 @@
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 26;
+    const MODIFICATION_COUNT = 27;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -274,6 +274,8 @@
     // DRONE_v1: distanza misurata tra le due punte estreme delle ali.
     const DRONE_V1_WINGTIP_DISTANCE = 13.5;
     const DRONE_V1_SCALE = (flyerHitboxRadius * 2) / DRONE_V1_WINGTIP_DISTANCE;
+    // Punta frontale rispetto al centro geometrico già calcolato dal file GLB.
+    const DRONE_V1_FRONT_TIP_OFFSET = (3.5704264640808105 - 0.24650204181671143) * DRONE_V1_SCALE;
     const projectiles = [];
     const laserPool = [];
     const LASER_GEOMETRY = new THREE.BoxGeometry(0.14, 0.14, 1.6);
@@ -815,28 +817,19 @@
     let previousLookY = 0;
     let mouseLookPointer = null;
     let decorativeDrone = null;
-    let decorativeDroneComparisonSphere = null;
     let decorativeDronePlaced = false;
-    const decorativeDroneAnchor = new THREE.Vector3();
 
     function placeDecorativeDrone() {
       if (!started || !decorativeDrone || decorativeDronePlaced) return;
 
-      decorativeDroneAnchor.set(0, 0.36, 0.98).applyQuaternion(flyer.quaternion);
-      decorativeDroneAnchor.add(flyer.position);
-      decorativeDroneAnchor.addScaledVector(flightDirection, 1);
-      decorativeDrone.position.copy(decorativeDroneAnchor);
-      // Punto zero del drone: orientamento predefinito di +90° sull'asse X.
-      decorativeDrone.quaternion.copy(flyer.quaternion);
-      decorativeDrone.rotateY(Math.PI * 0.5);
+      // Il modello è figlio del controller: il suo centro coincide con la hitbox.
+      decorativeDrone.position.set(0, 0, 0);
+      // +90° su X e correzione su Y per allineare la punta frontale al volo.
+      decorativeDrone.rotation.set(0, 0, 0);
+      decorativeDrone.rotateY(Math.PI);
       decorativeDrone.rotateX(Math.PI * 0.5);
       decorativeDrone.scale.setScalar(DRONE_V1_SCALE);
       decorativeDrone.visible = true;
-      if (decorativeDroneComparisonSphere) {
-        // Il riferimento e il centro geometrico visibile del modello coincidono.
-        decorativeDroneComparisonSphere.position.copy(decorativeDrone.position);
-        decorativeDroneComparisonSphere.visible = true;
-      }
       decorativeDronePlaced = true;
     }
 
@@ -852,7 +845,7 @@
           object.receiveShadow = true;
         });
 
-        // Centra il bounding box visibile sull'origine del gruppo di confronto.
+        // Centra il bounding box visibile sull'origine della hitbox del player.
         const modelCenter = new THREE.Box3()
           .setFromObject(droneModel)
           .getCenter(new THREE.Vector3());
@@ -861,20 +854,8 @@
         decorativeDrone = new THREE.Group();
         decorativeDrone.add(droneModel);
         decorativeDrone.visible = false;
-        scene.add(decorativeDrone);
-
-        // Riferimento visivo: stesso raggio della hitbox sferica del player.
-        decorativeDroneComparisonSphere = new THREE.Mesh(
-          new THREE.SphereGeometry(flyerHitboxRadius, 24, 16),
-          new THREE.MeshBasicMaterial({
-            color: 0xffd45c,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.9
-          })
-        );
-        decorativeDroneComparisonSphere.visible = false;
-        scene.add(decorativeDroneComparisonSphere);
+        // Modello, camera e hitbox condividono il controller del player.
+        flyer.add(decorativeDrone);
         placeDecorativeDrone();
       },
       undefined,
@@ -1242,12 +1223,10 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // La camera segue il drone giocabile; il modello statico resta nel mondo
-        // e può essere osservato volandogli e ruotandogli attorno.
-        cameraPosition.set(0, 0.36, 0.98).applyQuaternion(flyer.quaternion);
+        // Camera e modello condividono il player: la visuale parte dalla punta.
+        cameraPosition.set(0, 0, -DRONE_V1_FRONT_TIP_OFFSET).applyQuaternion(flyer.quaternion);
         cameraPosition.add(flyer.position);
-        cameraLookTarget.copy(flyer.position).addScaledVector(flightDirection, 1.4);
-        cameraLookTarget.y += 0.05;
+        cameraLookTarget.copy(cameraPosition).addScaledVector(flightDirection, 1.4);
         camera.position.copy(cameraPosition);
         camera.lookAt(cameraLookTarget);
       }

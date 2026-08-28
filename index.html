@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">34</p>
+    <p id="modificationCounter" class="counter">35</p>
     <div class="crosshair"></div>
   </div>
 
@@ -246,10 +246,11 @@
     const joystickKnob = document.getElementById("joystickKnob");
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
+    const crosshair = document.querySelector(".crosshair");
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 34;
+    const MODIFICATION_COUNT = 35;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -828,6 +829,10 @@
     // La direzione di volo usa yaw globale e pitch locale: il modello deve
     // comporre le rotazioni nello stesso ordine per restare allineato alla marcia.
     flyer.rotation.order = "YXZ";
+    // Pivot esclusivamente visivo: corregge la posa del GLB senza alterare
+    // controller, camera, fisica o hitbox sferica.
+    const droneVisualPivot = new THREE.Group();
+    flyer.add(droneVisualPivot);
     const safeSpawn = findSafeSpawn();
     flyer.position.set(safeSpawn.x, safeSpawn.y, safeSpawn.z);
     flyer.userData.hitbox = new THREE.Sphere();
@@ -867,6 +872,14 @@
     const flightDirection = new THREE.Vector3(0, 0, -1);
     const bounceVelocity = new THREE.Vector3();
     const bounceTilt = new THREE.Vector3();
+    const frameStartPosition = new THREE.Vector3();
+    const actualMovement = new THREE.Vector3();
+    const projectedAimPoint = new THREE.Vector3();
+    let visualFlightPitch = 0;
+    let previousYawForBank = 0;
+    let smoothedYawRate = 0;
+    let turnBank = 0;
+    const MAX_TURN_BANK = THREE.MathUtils.degToRad(11);
     let started = false;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
@@ -914,7 +927,7 @@
         decorativeDrone.add(droneModel);
         decorativeDrone.visible = false;
         // Modello, camera e hitbox condividono il controller del player.
-        flyer.add(decorativeDrone);
+        droneVisualPivot.add(decorativeDrone);
         placeDecorativeDrone();
       },
       undefined,
@@ -1213,6 +1226,7 @@
     function moveFlyer(delta) {
       if (!started || !flyer) return;
 
+      frameStartPosition.copy(flyer.position);
       let throttle = 0;
       if (keys.has("w")) throttle = 1;
 
@@ -1293,7 +1307,54 @@
         updateFlyerHitbox();
       }
 
+      // La posa verticale del GLB segue lo spostamento realmente ottenuto.
+      // Al tetto o al terreno il modello non resta impennato mentre la quota è bloccata.
+      actualMovement.copy(flyer.position).sub(frameStartPosition);
+      let targetVisualPitch = pitch;
+      if (throttle > 0 && actualMovement.lengthSq() > 0.000001) {
+        targetVisualPitch = Math.atan2(
+          actualMovement.y,
+          Math.hypot(actualMovement.x, actualMovement.z)
+        );
+      }
+      visualFlightPitch = THREE.MathUtils.damp(visualFlightPitch, targetVisualPitch, 10, delta);
+
+      // Piccolo rollio da caccia, proporzionale alla velocità di virata e smorzato.
+      const yawDelta = Math.atan2(
+        Math.sin(yaw - previousYawForBank),
+        Math.cos(yaw - previousYawForBank)
+      );
+      previousYawForBank = yaw;
+      const rawYawRate = yawDelta / Math.max(delta, 1 / 120);
+      smoothedYawRate = THREE.MathUtils.damp(smoothedYawRate, rawYawRate, 9, delta);
+      const bankStrength = throttle > 0 ? 1 : 0.35;
+      const targetBank = THREE.MathUtils.clamp(
+        -smoothedYawRate * 0.035 * bankStrength,
+        -MAX_TURN_BANK,
+        MAX_TURN_BANK
+      );
+      turnBank = THREE.MathUtils.damp(turnBank, targetBank, 7, delta);
+
       flyer.rotation.set(pitch + bounceTilt.x, yaw + bounceTilt.y, bounceTilt.z);
+      droneVisualPivot.rotation.set(visualFlightPitch - pitch, 0, turnBank);
+    }
+
+    function updateCrosshair() {
+      if (!thirdPersonEnabled || !flyer) {
+        crosshair.style.left = "50%";
+        crosshair.style.top = "50%";
+        return;
+      }
+
+      // Il mirino indica la traiettoria dei laser; se il punto è fuori campo,
+      // resta sul bordo nella direzione corretta senza coprire il modello.
+      projectedAimPoint.copy(flyer.position).addScaledVector(flightDirection, 18);
+      projectedAimPoint.project(camera);
+      const margin = 16;
+      const screenX = (projectedAimPoint.x * 0.5 + 0.5) * innerWidth;
+      const screenY = (-projectedAimPoint.y * 0.5 + 0.5) * innerHeight;
+      crosshair.style.left = `${THREE.MathUtils.clamp(screenX, margin, innerWidth - margin)}px`;
+      crosshair.style.top = `${THREE.MathUtils.clamp(screenY, margin, innerHeight - margin)}px`;
     }
 
     function animate() {
@@ -1318,6 +1379,8 @@
         }
         camera.position.copy(cameraPosition);
         camera.lookAt(cameraLookTarget);
+        camera.updateMatrixWorld();
+        updateCrosshair();
       }
 
       renderer.render(scene, camera);

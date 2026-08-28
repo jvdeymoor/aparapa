@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">38</p>
+    <p id="modificationCounter" class="counter">39</p>
     <div class="crosshair"></div>
   </div>
 
@@ -250,7 +250,7 @@
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 38;
+    const MODIFICATION_COUNT = 39;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -1350,7 +1350,7 @@
         bankTurnInput = THREE.MathUtils.damp(bankTurnInput, 0, 5, delta);
       }
       const bankStrength = throttle > 0 ? 1 : 0.6;
-      const targetBank = bankTurnInput * MAX_TURN_BANK * bankStrength;
+      const targetBank = -bankTurnInput * MAX_TURN_BANK * bankStrength;
       const bankResponse = Math.abs(targetBank) > Math.abs(turnBank) ? 11 : 4.5;
       turnBank = THREE.MathUtils.damp(turnBank, targetBank, bankResponse, delta);
 

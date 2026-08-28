@@ -12,6 +12,7 @@ Aggiornato il 28 agosto 2026 dopo la revisione 58. Questo documento descrive lo 
 - Sito: https://jvdeymoor.github.io/progetto27/
 - GitHub Pages pubblica la cartella principale del branch main.
 - Ultimo commit pubblicato della revisione 48: 026618f6ae0966f29e758f8ea6a7d29a3f4b9917
+- Ultimo commit funzionale pubblicato della revisione 58: 648bf4c82b803aebdb4a729d17471c41f9e7fec1
 - Ultimo commit funzionale locale della revisione 58: 2fa6fce
 - Tag locale di riferimento precedente: TEST0 sul commit 4fa3208
 - Contatore visibile e costante REVISION_COUNT: 58

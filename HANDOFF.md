@@ -113,9 +113,23 @@ Aggiornato il 2026-08-28 dopo la revisione completa della chat. Questa sezione r
 
 ### Contatore e abitudini di lavoro
 
-- Il contatore visibile è un contatore di revisione del progetto, non un valore di gameplay. Dopo l’ultima modifica al progetto il valore corrente è **23**.
+- Il contatore visibile è un contatore di revisione del progetto, non un valore di gameplay. Dopo l’ultima modifica al progetto il valore corrente è **33**.
 - Incrementare sempre il contatore a ogni modifica pubblicata al codice del progetto e aggiornare sia il valore HTML iniziale sia `MODIFICATION_COUNT` in `index.html`.
 - Prima di chiudere una modifica: leggere/verificare il contenuto remoto su GitHub `main`, controllare la sintassi, verificare la pagina pubblicata e controllare che non compaiano errori JavaScript.
 - La fonte di verità resta il repository remoto GitHub `jvdeymoor/progetto27`; il lavoro sul codice va salvato direttamente su `main`. La copia locale serve per analisi o strumenti locali.
 - Quando GitHub Pages mostra ancora una versione precedente, considerare la propagazione/cache e usare un ricaricamento senza cache o un URL di verifica con query string.
 - Quando l’utente chiede una modifica al progetto, mantenere le regole sopra, aggiornare il contatore e non ripristinare comportamenti già esclusi senza una nuova richiesta esplicita.
+
+
+### Aggiornamento della sessione del 2026-08-28 — revisioni 24–33
+
+Queste note sostituiscono ogni istruzione precedente in conflitto.
+
+- Il contatore di revisione corrente è **33**. L’ultimo commit di `index.html` è `142715fdf8f41466967349b152a389b561cb6718`; l’ultima revisione pubblicata è la 33.
+- `DRONE_v1.glb` non è più un oggetto decorativo separato: è il modello visivo del player. Il controller, la fisica e l’hitbox restano nel gruppo sferico invisibile `flyer` con raggio `0,38`; il modello è figlio di quel controller e il suo centro geometrico coincide con il centro della hitbox.
+- La distanza misurata tra le punte estreme delle ali è `13,5`. Il modello è scalato a `0,0562962963`, così l’apertura alare è `0,76`, uguale al diametro della hitbox. Non esiste più alcuna propulsione automatica di test.
+- L’orientamento base attuale del modello usa `rotateY(Math.PI)` e `rotateX(Math.PI * 0.5)`, con la punta frontale allineata alla direzione di volo del player. Non modificare questo allineamento, né i controlli o la fisica, senza una nuova richiesta esplicita.
+- In prima persona la camera è alla punta frontale del modello e resta nel volume dell’hitbox. In alto a destra c’è un unico pulsante senza testo per attivare/disattivare la terza persona; è giallo quando attiva. Non sono più presenti menu, slider, valori manuali o pulsanti testuali `3P`.
+- La terza persona attuale è una chase camera: segue la posizione e la direzione orizzontale data da `yaw`, guarda il centro del player e usa distanza orizzontale `2` e altezza `1,25`. Questa configurazione è il ripristino della chase camera precedente, mantenendo il solo avvicinamento richiesto.
+- La distanza minima orizzontale tra gli AABB degli edifici è `MIN_BUILDING_CLEARANCE = flyerHitboxRadius * 2 * 1.15`, cioè `0,874`. Il controllo avviene sia rispetto agli edifici del chunk corrente sia rispetto ai chunk già caricati.
+- Le modifiche di questa sessione hanno prodotto i commit `6caea0f`, `9d4c05d`, `aebedb`, `cf924dd`, `87979e`, `a7a7fb`, `5f6503f`, `e4845b0`, `fcc2693` e `142715f`. GitHub Pages può mostrare una revisione precedente durante la propagazione/cache.

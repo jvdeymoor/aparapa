@@ -7,12 +7,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 // ============================================================================
 export const DRONE_SETTINGS = {
   // --- Dimensioni e modello 3D ---
-  modelUrl: "./DRONE_v1.glb", // Percorso del file GLB usato come aspetto del player.
+  modelUrl: "./DRONE_v1.glb?rev=42", // Percorso e versione cache del GLB usato dal player.
   hitboxRadius: 0.38, // Raggio della sfera fisica del drone.
-  wingtipDistanceInModel: 13.5, // Apertura alare originale misurata dentro il GLB.
-  forwardAxisCorrectionDegrees: 13.2, // Correzione dell'inclinazione interna del modello.
-  modelFrontMaximum: 3.5704264640808105, // Coordinata originale della punta frontale.
-  modelCenterForward: 0.24650204181671143, // Centro originale usato per la prima persona.
+  firstPersonCameraOffset: 0.18712463414227523, // Distanza dal centro alla camera sul muso.
 
   // --- Movimento e limiti verticali ---
   flightSpeed: 13, // Velocità in avanti quando si accelera.
@@ -137,13 +134,7 @@ export class DroneController {
     this.bankInputHold = 0;
     this.turnBank = 0;
 
-    this.modelScale = (DRONE_SETTINGS.hitboxRadius * 2) / DRONE_SETTINGS.wingtipDistanceInModel;
-    this.modelForwardCorrection = THREE.MathUtils.degToRad(
-      DRONE_SETTINGS.forwardAxisCorrectionDegrees
-    );
-    this.frontTipOffset = (
-      DRONE_SETTINGS.modelFrontMaximum - DRONE_SETTINGS.modelCenterForward
-    ) * this.modelScale;
+    this.frontTipOffset = DRONE_SETTINGS.firstPersonCameraOffset;
     this.maxTurnBank = THREE.MathUtils.degToRad(DRONE_SETTINGS.maxTurnBankDegrees);
 
     this.flyer = new THREE.Group();
@@ -197,10 +188,8 @@ export class DroneController {
           object.castShadow = true;
           object.receiveShadow = true;
         });
-        const modelCenter = new THREE.Box3().setFromObject(droneModel).getCenter(new THREE.Vector3());
-        droneModel.position.sub(modelCenter);
-        this.decorativeDrone = new THREE.Group();
-        this.decorativeDrone.add(droneModel);
+        // Il file è già centrato, orientato e scalato: qui non servono correzioni.
+        this.decorativeDrone = droneModel;
         this.decorativeDrone.visible = false;
         this.droneVisualPivot.add(this.decorativeDrone);
         this.placeModel();
@@ -214,9 +203,7 @@ export class DroneController {
     if (!this.started || !this.decorativeDrone || this.decorativeDronePlaced) return;
     this.decorativeDrone.position.set(0, 0, 0);
     this.decorativeDrone.rotation.set(0, 0, 0);
-    this.decorativeDrone.rotateY(Math.PI);
-    this.decorativeDrone.rotateX(Math.PI * 0.5 + this.modelForwardCorrection);
-    this.decorativeDrone.scale.setScalar(this.modelScale);
+    this.decorativeDrone.scale.set(1, 1, 1);
     this.decorativeDrone.visible = true;
     this.decorativeDronePlaced = true;
   }

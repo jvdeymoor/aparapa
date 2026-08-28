@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">37</p>
+    <p id="modificationCounter" class="counter">38</p>
     <div class="crosshair"></div>
   </div>
 
@@ -250,7 +250,7 @@
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 37;
+    const MODIFICATION_COUNT = 38;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -879,8 +879,8 @@
     const actualMovement = new THREE.Vector3();
     const projectedAimPoint = new THREE.Vector3();
     let visualFlightPitch = 0;
-    let previousYawForBank = 0;
-    let smoothedYawRate = 0;
+    let bankTurnInput = 0;
+    let bankInputHold = 0;
     let turnBank = 0;
     const MAX_TURN_BANK = THREE.MathUtils.degToRad(50);
     let started = false;
@@ -1004,8 +1004,22 @@
       if (event.key.toLowerCase() === "w") keys.delete("w");
     });
 
+    function registerTurnBankInput(horizontalDelta) {
+      if (Math.abs(horizontalDelta) < 0.01) return;
+      // Accumula il gesto orizzontale: una virata mantenuta raggiunge il rollio
+      // pieno, mentre una correzione breve produce soltanto una piccola inclinazione.
+      if (bankTurnInput * horizontalDelta < 0) bankTurnInput *= 0.35;
+      bankTurnInput = THREE.MathUtils.clamp(
+        bankTurnInput + horizontalDelta / 45,
+        -1,
+        1
+      );
+      bankInputHold = 0.14;
+    }
+
     addEventListener("mousemove", event => {
       if (document.pointerLockElement !== renderer.domElement || !started) return;
+      registerTurnBankInput(event.movementX);
       yaw -= event.movementX * 0.0022;
       pitch -= event.movementY * 0.0022;
       pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
@@ -1024,8 +1038,11 @@
       // Fallback per browser che non consentono il pointer lock:
       // clicca e trascina sul canvas per guardarti intorno.
       if (!started || event.pointerId !== mouseLookPointer || document.pointerLockElement === renderer.domElement) return;
-      yaw -= (event.clientX - previousLookX) * 0.006;
-      pitch -= (event.clientY - previousLookY) * 0.006;
+      const lookDeltaX = event.clientX - previousLookX;
+      const lookDeltaY = event.clientY - previousLookY;
+      registerTurnBankInput(lookDeltaX);
+      yaw -= lookDeltaX * 0.006;
+      pitch -= lookDeltaY * 0.006;
       pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
       previousLookX = event.clientX;
       previousLookY = event.clientY;
@@ -1085,8 +1102,11 @@
     });
     lookArea.addEventListener("pointermove", event => {
       if (event.pointerId !== lookPointer) return;
-      yaw -= (event.clientX - previousLookX) * 0.009;
-      pitch -= (event.clientY - previousLookY) * 0.009;
+      const lookDeltaX = event.clientX - previousLookX;
+      const lookDeltaY = event.clientY - previousLookY;
+      registerTurnBankInput(lookDeltaX);
+      yaw -= lookDeltaX * 0.009;
+      pitch -= lookDeltaY * 0.009;
       pitch = THREE.MathUtils.clamp(pitch, -1.35, 1.35);
       previousLookX = event.clientX;
       previousLookY = event.clientY;
@@ -1323,21 +1343,16 @@
       }
       visualFlightPitch = THREE.MathUtils.damp(visualFlightPitch, targetVisualPitch, 10, delta);
 
-      // Piccolo rollio da caccia, proporzionale alla velocità di virata e smorzato.
-      const yawDelta = Math.atan2(
-        Math.sin(yaw - previousYawForBank),
-        Math.cos(yaw - previousYawForBank)
-      );
-      previousYawForBank = yaw;
-      const rawYawRate = yawDelta / Math.max(delta, 1 / 120);
-      smoothedYawRate = THREE.MathUtils.damp(smoothedYawRate, rawYawRate, 9, delta);
-      const bankStrength = throttle > 0 ? 1 : 0.35;
-      const targetBank = THREE.MathUtils.clamp(
-        -smoothedYawRate * 0.035 * bankStrength,
-        -MAX_TURN_BANK,
-        MAX_TURN_BANK
-      );
-      turnBank = THREE.MathUtils.damp(turnBank, targetBank, 7, delta);
+      // Rollio da caccia: attacco rapido durante la virata, breve tenuta e
+      // ritorno più morbido quando il gesto orizzontale termina.
+      bankInputHold = Math.max(0, bankInputHold - delta);
+      if (bankInputHold <= 0) {
+        bankTurnInput = THREE.MathUtils.damp(bankTurnInput, 0, 5, delta);
+      }
+      const bankStrength = throttle > 0 ? 1 : 0.6;
+      const targetBank = bankTurnInput * MAX_TURN_BANK * bankStrength;
+      const bankResponse = Math.abs(targetBank) > Math.abs(turnBank) ? 11 : 4.5;
+      turnBank = THREE.MathUtils.damp(turnBank, targetBank, bankResponse, delta);
 
       flyer.rotation.set(pitch + bounceTilt.x, yaw + bounceTilt.y, bounceTilt.z);
       droneVisualPivot.rotation.set(visualFlightPitch - pitch, 0, turnBank);

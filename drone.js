@@ -1,15 +1,19 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
+const WORLD_LAYER = 0;
+const DRONE_BODY_LAYER = 1;
+const DRONE_BLADES_LAYER = 2;
+const MOBILE_LAYOUT_QUERY = "(pointer: coarse) and (max-width: 900px)";
+
 // ============================================================================
 // CERCA: SETTAGGI DRONE
 // Tutti i valori principali del player sono qui, divisi per argomento.
 // ============================================================================
 export const DRONE_SETTINGS = {
   // --- Dimensioni e modello 3D ---
-  modelUrl: "./DRONE_v2.glb?rev=48", // Percorso e versione cache del GLB usato dal player.
+  modelUrl: "./DRONE_v2.glb?rev=49", // Percorso e versione cache del GLB usato dal player.
   hitboxRadius: 0.38, // Raggio della sfera fisica del drone.
-  firstPersonCameraOffset: 0.10, // Posizione della camera nel muso: evita che il cockpit copra la visuale.
 
   // --- Movimento e limiti verticali ---
   flightSpeed: 13, // Velocità in avanti quando si accelera.
@@ -21,12 +25,18 @@ export const DRONE_SETTINGS = {
   // --- Sensibilità dei controlli ---
   pointerLockSensitivity: 0.0022, // Sensibilità del mouse con puntatore bloccato.
   mouseDragSensitivity: 0.006, // Sensibilità del trascinamento mouse di emergenza.
-  mobileLookSensitivity: 0.009, // Sensibilità dello swipe sul lato destro.
+  mobileLookSensitivity: 0.009, // Sensibilità dello swipe sulla superficie libera del display.
+  mobileBankScreenFractionForFullEffect: 0.12, // Frazione del lato corto necessaria per il rollio mobile massimo.
 
   // --- Camera e mirino ---
   thirdPersonDistance: 2, // Distanza orizzontale della chase camera.
   thirdPersonHeight: 1.25, // Altezza della chase camera sopra il drone.
-  firstPersonFov: 105, // Campo visivo in prima persona: più alto mostra le quattro punte delle falci.
+  firstPersonDesktopCameraZ: 0.1, // Camera PC dietro la curva delle falci, lungo l'asse locale +Z.
+  firstPersonMobileCameraZ: 0.1, // Camera mobile più arretrata per contenere le falci nel viewport stretto.
+  firstPersonDesktopFov: 85, // Campo visivo PC più naturale e privo dell'effetto pseudo-fisheye.
+  firstPersonDesktopZoom: 2, // Zoom manuale PC: 1.0 è neutro, valori maggiori stringono il FOV.
+  firstPersonMobileFov: 105, // Campo visivo mobile originale, lasciato invariato.
+  firstPersonMobileZoom: 1.4, // Zoom manuale mobile: 1.0 è neutro, valori maggiori stringono il FOV.
   firstPersonLookDistance: 1.4, // Distanza del punto guardato in prima persona.
   crosshairAimDistance: 18, // Distanza usata per proiettare il mirino in terza persona.
   crosshairScreenMargin: 16, // Margine minimo del mirino dai bordi dello schermo.
@@ -112,12 +122,19 @@ export class DroneController {
     this.mobileMove = { x: 0, y: 0 };
     this.joystickPointer = null;
     this.lookPointer = null;
+    this.lookStartX = 0;
+    this.lookStartBankInput = 0;
     this.mouseLookPointer = null;
+    this.desktopThrottleHeld = false;
+    this.desktopFireHeld = false;
     this.previousLookX = 0;
     this.previousLookY = 0;
     this.shotCooldown = 0;
     this.decorativeDrone = null;
     this.decorativeDronePlaced = false;
+    this.droneBodyMeshes = [];
+    this.droneBladeMeshes = [];
+    this.mobileLayout = matchMedia(MOBILE_LAYOUT_QUERY);
 
     this.cameraPosition = new THREE.Vector3();
     this.cameraLookTarget = new THREE.Vector3();
@@ -136,8 +153,11 @@ export class DroneController {
     this.bankInputHold = 0;
     this.turnBank = 0;
 
-    this.frontTipOffset = DRONE_SETTINGS.firstPersonCameraOffset;
     this.maxTurnBank = THREE.MathUtils.degToRad(DRONE_SETTINGS.maxTurnBankDegrees);
+
+    this.camera.layers.enable(WORLD_LAYER);
+    this.camera.layers.enable(DRONE_BLADES_LAYER);
+    this.syncCameraLayers();
 
     this.flyer = new THREE.Group();
     this.flyer.rotation.order = "YXZ";
@@ -185,10 +205,30 @@ export class DroneController {
       DRONE_SETTINGS.modelUrl,
       gltf => {
         const droneModel = gltf.scene;
+        const bodyNode = droneModel.getObjectByName("DRONE_BODY");
+        const bladesNode = droneModel.getObjectByName("DRONE_BLADES");
         droneModel.traverse(object => {
           if (!object.isMesh) return;
           object.castShadow = true;
           object.receiveShadow = true;
+        });
+        bladesNode?.traverse(object => {
+          if (!object.isMesh) return;
+          object.layers.set(DRONE_BLADES_LAYER);
+          this.droneBladeMeshes.push(object);
+        });
+        bodyNode?.traverse(object => {
+          if (!object.isMesh) return;
+          object.layers.set(DRONE_BODY_LAYER);
+          this.droneBodyMeshes.push(object);
+        });
+        if (this.droneBodyMeshes.length === 0 || this.droneBladeMeshes.length === 0) {
+          console.error("Il GLB deve contenere le mesh DRONE_BODY e DRONE_BLADES");
+        }
+        this.scene.traverse(object => {
+          if (!object.isLight || !object.shadow?.camera) return;
+          object.shadow.camera.layers.enable(DRONE_BODY_LAYER);
+          object.shadow.camera.layers.enable(DRONE_BLADES_LAYER);
         });
         // Il file è già centrato, orientato e scalato: qui non servono correzioni.
         this.decorativeDrone = droneModel;
@@ -217,6 +257,7 @@ export class DroneController {
 
   setThirdPersonEnabled(enabled) {
     this.thirdPersonEnabled = enabled;
+    this.syncCameraLayers();
     if (document.pointerLockElement === this.renderer.domElement) {
       document.exitPointerLock?.();
     }
@@ -225,6 +266,13 @@ export class DroneController {
 
   toggleThirdPerson() {
     return this.setThirdPersonEnabled(!this.thirdPersonEnabled);
+  }
+
+  syncCameraLayers() {
+    this.camera.layers.enable(WORLD_LAYER);
+    this.camera.layers.enable(DRONE_BLADES_LAYER);
+    if (this.thirdPersonEnabled) this.camera.layers.enable(DRONE_BODY_LAYER);
+    else this.camera.layers.disable(DRONE_BODY_LAYER);
   }
 
   requestPointerLockSafely() {
@@ -272,15 +320,36 @@ export class DroneController {
       );
     });
 
+    const syncDesktopMouseButtons = buttons => {
+      this.desktopFireHeld = (buttons & 1) !== 0;
+      this.desktopThrottleHeld = (buttons & 2) !== 0;
+    };
+    const resetDesktopMouseButtons = () => {
+      this.desktopFireHeld = false;
+      this.desktopThrottleHeld = false;
+      this.mouseLookPointer = null;
+    };
+
     this.renderer.domElement.addEventListener("pointerdown", event => {
       if (!this.started || !matchMedia("(pointer: fine)").matches) return;
-      if (event.button === 0) this.shootProjectile();
+      if (event.button !== 0 && event.button !== 2) return;
+      if (event.button === 2) event.preventDefault();
+      syncDesktopMouseButtons(event.buttons);
+      if (event.button === 0) {
+        this.shootProjectile();
+        this.shotCooldown = DRONE_SETTINGS.mobileFireInterval;
+      }
       this.mouseLookPointer = event.pointerId;
       this.previousLookX = event.clientX;
       this.previousLookY = event.clientY;
-      this.renderer.domElement.setPointerCapture(event.pointerId);
+      if (!this.renderer.domElement.hasPointerCapture?.(event.pointerId)) {
+        this.renderer.domElement.setPointerCapture(event.pointerId);
+      }
     });
     this.renderer.domElement.addEventListener("pointermove", event => {
+      if (this.started && matchMedia("(pointer: fine)").matches) {
+        syncDesktopMouseButtons(event.buttons);
+      }
       if (
         !this.started
         || event.pointerId !== this.mouseLookPointer
@@ -300,7 +369,13 @@ export class DroneController {
       this.previousLookY = event.clientY;
     });
     const stopMouseLooking = event => {
+      if (event.type === "pointercancel") {
+        resetDesktopMouseButtons();
+      } else {
+        syncDesktopMouseButtons(event.buttons);
+      }
       if (event.pointerId !== this.mouseLookPointer) return;
+      if (this.desktopThrottleHeld || this.desktopFireHeld) return;
       this.mouseLookPointer = null;
       if (this.renderer.domElement.hasPointerCapture?.(event.pointerId)) {
         this.renderer.domElement.releasePointerCapture(event.pointerId);
@@ -308,6 +383,9 @@ export class DroneController {
     };
     this.renderer.domElement.addEventListener("pointerup", stopMouseLooking);
     this.renderer.domElement.addEventListener("pointercancel", stopMouseLooking);
+    this.renderer.domElement.addEventListener("contextmenu", event => event.preventDefault());
+    addEventListener("mouseup", event => syncDesktopMouseButtons(event.buttons));
+    addEventListener("blur", resetDesktopMouseButtons);
 
     this.joystick.addEventListener("pointerdown", event => {
       if (!this.started) this.onStartRequested();
@@ -323,7 +401,10 @@ export class DroneController {
 
     this.lookArea.addEventListener("pointerdown", event => {
       if (!this.started) this.onStartRequested();
+      if (this.lookPointer !== null) return;
       this.lookPointer = event.pointerId;
+      this.lookStartX = event.clientX;
+      this.lookStartBankInput = this.bankTurnInput;
       this.previousLookX = event.clientX;
       this.previousLookY = event.clientY;
       this.lookArea.setPointerCapture(event.pointerId);
@@ -332,7 +413,17 @@ export class DroneController {
       if (event.pointerId !== this.lookPointer) return;
       const lookDeltaX = event.clientX - this.previousLookX;
       const lookDeltaY = event.clientY - this.previousLookY;
-      this.registerTurnBankInput(lookDeltaX);
+      const fullBankDistance = Math.max(
+        1,
+        Math.min(innerWidth, innerHeight)
+          * DRONE_SETTINGS.mobileBankScreenFractionForFullEffect
+      );
+      this.bankTurnInput = THREE.MathUtils.clamp(
+        this.lookStartBankInput + (event.clientX - this.lookStartX) / fullBankDistance,
+        -1,
+        1
+      );
+      this.bankInputHold = DRONE_SETTINGS.bankHoldSeconds;
       this.yaw -= lookDeltaX * DRONE_SETTINGS.mobileLookSensitivity;
       this.pitch -= lookDeltaY * DRONE_SETTINGS.mobileLookSensitivity;
       this.pitch = THREE.MathUtils.clamp(
@@ -344,7 +435,9 @@ export class DroneController {
       this.previousLookY = event.clientY;
     });
     const stopLooking = event => {
-      if (event.pointerId === this.lookPointer) this.lookPointer = null;
+      if (event.pointerId !== this.lookPointer) return;
+      this.lookPointer = null;
+      this.bankInputHold = 0;
     };
     this.lookArea.addEventListener("pointerup", stopLooking);
     this.lookArea.addEventListener("pointercancel", stopLooking);
@@ -426,15 +519,16 @@ export class DroneController {
   move(delta) {
     if (!this.started) return;
     this.frameStartPosition.copy(this.flyer.position);
-    let throttle = this.keys.has("w") ? 1 : 0;
+    let throttle = this.keys.has("w") || this.desktopThrottleHeld ? 1 : 0;
     const joystickReverse = this.joystickPointer !== null
       && this.mobileMove.y > DRONE_SETTINGS.mobileFireThreshold;
     const stickShooting = this.joystickPointer !== null
       && Math.abs(this.mobileMove.y) > DRONE_SETTINGS.mobileFireThreshold;
+    const desktopShooting = this.desktopFireHeld;
     if (this.joystickPointer !== null) throttle = joystickReverse ? 0 : 1;
 
     this.shotCooldown = Math.max(0, this.shotCooldown - delta);
-    if (stickShooting && this.shotCooldown <= 0) {
+    if ((stickShooting || desktopShooting) && this.shotCooldown <= 0) {
       this.shootProjectile();
       this.shotCooldown = DRONE_SETTINGS.mobileFireInterval;
     }
@@ -517,7 +611,7 @@ export class DroneController {
     );
 
     this.bankInputHold = Math.max(0, this.bankInputHold - delta);
-    if (this.bankInputHold <= 0) {
+    if (this.bankInputHold <= 0 && this.lookPointer === null) {
       this.bankTurnInput = THREE.MathUtils.damp(
         this.bankTurnInput,
         0,
@@ -525,7 +619,11 @@ export class DroneController {
         delta
       );
     }
-    const bankStrength = throttle > 0 ? 1 : DRONE_SETTINGS.bankWithoutThrottle;
+    const bankStrength = this.lookPointer !== null
+      ? 1
+      : throttle > 0
+        ? 1
+        : DRONE_SETTINGS.bankWithoutThrottle;
     const targetBank = DRONE_SETTINGS.bankDirection
       * this.bankTurnInput
       * this.maxTurnBank
@@ -533,7 +631,9 @@ export class DroneController {
     const bankResponse = Math.abs(targetBank) > Math.abs(this.turnBank)
       ? DRONE_SETTINGS.bankAttackSpeed
       : DRONE_SETTINGS.bankReleaseSpeed;
-    this.turnBank = THREE.MathUtils.damp(this.turnBank, targetBank, bankResponse, delta);
+    this.turnBank = this.lookPointer !== null
+      ? targetBank
+      : THREE.MathUtils.damp(this.turnBank, targetBank, bankResponse, delta);
 
     this.flyer.rotation.set(
       this.pitch + this.bounceTilt.x,
@@ -548,9 +648,14 @@ export class DroneController {
   }
 
   updateCameraAndCrosshair() {
+    const mobileFirstPerson = this.mobileLayout.matches;
     const targetFov = this.thirdPersonEnabled
       ? this.thirdPersonFov
-      : DRONE_SETTINGS.firstPersonFov;
+      : mobileFirstPerson
+        ? DRONE_SETTINGS.firstPersonMobileFov
+          / Math.max(0.1, DRONE_SETTINGS.firstPersonMobileZoom)
+        : DRONE_SETTINGS.firstPersonDesktopFov
+          / Math.max(0.1, DRONE_SETTINGS.firstPersonDesktopZoom);
     if (this.camera.fov !== targetFov) {
       this.camera.fov = targetFov;
       this.camera.updateProjectionMatrix();
@@ -565,8 +670,11 @@ export class DroneController {
       this.cameraPosition.y += DRONE_SETTINGS.thirdPersonHeight;
       this.cameraLookTarget.copy(this.flyer.position);
     } else {
+      const cameraLocalZ = mobileFirstPerson
+        ? DRONE_SETTINGS.firstPersonMobileCameraZ
+        : DRONE_SETTINGS.firstPersonDesktopCameraZ;
       this.cameraPosition
-        .set(0, 0, -this.frontTipOffset)
+        .set(0, 0, cameraLocalZ)
         .applyQuaternion(this.flyer.quaternion)
         .add(this.flyer.position);
       this.cameraLookTarget

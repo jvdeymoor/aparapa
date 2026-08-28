@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Il mio mondo</title>
+  <title>27</title>
   <style>
     :root {
       font-family: Arial, Helvetica, sans-serif;
@@ -157,6 +157,7 @@
 
     #joystick {
       position: absolute;
+      z-index: 1;
       left: 24px;
       bottom: 28px;
       width: 124px;
@@ -182,10 +183,7 @@
 
     #lookArea {
       position: absolute;
-      right: 0;
-      bottom: 0;
-      width: 58%;
-      height: 65%;
+      inset: 0;
       pointer-events: auto;
       touch-action: none;
     }
@@ -206,7 +204,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">48</p>
+    <p id="modificationCounter" class="counter">58</p>
     <div class="crosshair"></div>
   </div>
 
@@ -220,8 +218,8 @@
 
   <section id="startScreen">
     <div class="start-card">
-      <h1>Benvenuto nel mondo</h1>
-      <p>Asfalto, ghiaia, terra, cemento e poca erba.<br>Vola tra i grattacieli della città.</p>
+      <h1>Progetto27</h1>
+      <p><br></p>
       <button id="startButton" type="button">INIZIA</button>
     </div>
   </section>
@@ -237,7 +235,7 @@
 
     <script type="module">
     import * as THREE from "three";
-    import { DroneController, DRONE_SETTINGS } from "./drone.js?rev=48";
+    import { DroneController, DRONE_SETTINGS } from "./drone.js?rev=58";
     import { TerrainWorld } from "./terrain.js";
 
     // ==========================================================================
@@ -257,7 +255,7 @@
       sunIntensity: 3.2 // Intensità della luce direzionale principale.
     };
 
-    const REVISION_COUNT = 48;
+    const REVISION_COUNT = 58;
     const game = document.getElementById("game");
     const startScreen = document.getElementById("startScreen");
     const startButton = document.getElementById("startButton");

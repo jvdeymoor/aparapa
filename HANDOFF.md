@@ -1,26 +1,31 @@
 # HANDOFF — progetto27
 
-Aggiornato il 28 agosto 2026 dopo la revisione 48. Questo documento descrive lo stato corrente e sostituisce integralmente le note precedenti in caso di conflitto.
+Aggiornato il 28 agosto 2026 dopo la revisione 58. Questo documento descrive lo stato corrente e sostituisce integralmente le note precedenti in caso di conflitto.
 
 ## Riferimenti
 
 - Cartella locale di lavoro: /home/f/Documents/Codex/progetto27
 - Repository: jvdeymoor/progetto27
-- Branch pubblicato: main
+- Branch locale: main
+- Nessun remote è configurato nel repository Git locale di questa cartella.
+- Branch pubblicato su GitHub: main.
 - Sito: https://jvdeymoor.github.io/progetto27/
 - GitHub Pages pubblica la cartella principale del branch main.
-- Ultimo commit funzionale della revisione 48: 026618f6ae0966f29e758f8ea6a7d29a3f4b9917
-- Contatore visibile e costante REVISION_COUNT: 48
+- Ultimo commit pubblicato della revisione 48: 026618f6ae0966f29e758f8ea6a7d29a3f4b9917
+- Ultimo commit funzionale locale della revisione 58: 2fa6fce
+- Tag locale di riferimento precedente: TEST0 sul commit 4fa3208
+- Contatore visibile e costante REVISION_COUNT: 58
+- avviare blender con bridge attivo: /home/f/Documents/Codex/progetto27/avvia_blender_codex.sh
 
-La fonte di verità per codice e pubblicazione è il repository remoto su GitHub. La cartella locale contiene inoltre i file Blender e serve per verifiche e strumenti locali.
+Le revisioni 49–58 sono state sviluppate e salvate prima nel Git locale. La pubblicazione richiesta in questa sessione porta gli stessi file funzionali sul branch main remoto.
 
 ## Struttura corrente
 
 - index.html: inizializzazione della scena, luci, renderer, menu iniziale, HUD e ciclo principale.
 - drone.js: DRONE_SETTINGS e classe DroneController; contiene modello, movimento, collisioni, camera, mirino, input e laser.
 - terrain.js: TERRAIN_SETTINGS, BUILDING_SETTINGS e classe TerrainWorld; contiene terreno, edifici, hitbox e confini.
-- DRONE_v2.glb: modello attualmente caricato dal gioco.
-- DRONE_v2.blend: sorgente Blender canonico e modificabile dello stesso modello.
+- DRONE_v2.glb: modello attualmente caricato dal gioco, separato nei nodi DRONE_BODY e DRONE_BLADES.
+- DRONE_v2.blend: sorgente Blender canonico con gli oggetti DRONE_BODY e DRONE_BLADES.
 - DRONE_v1.glb e DRONE_v1.blend: versione precedente, conservata ma non più usata dal player.
 - killer.png: immagine di riferimento usata per DRONE_v2.
 - avvia-locale.py: server HTTP locale e apertura automatica del browser.
@@ -59,10 +64,11 @@ Three.js 0.160.0 e GLTFLoader sono caricati tramite import map da jsDelivr.
 
 Desktop:
 
-- W accelera in avanti.
+- W o il pulsante destro del mouse accelerano in avanti.
 - Mouse controlla yaw e pitch; il pointer lock viene usato quando disponibile.
 - Il trascinamento sul canvas resta il fallback quando il browser rifiuta il pointer lock.
-- Click sinistro spara.
+- Il pulsante sinistro spara subito e continua a raffica finché resta premuto.
+- Sinistro, destro e movimento del mouse sono indipendenti e funzionano contemporaneamente.
 - Esc libera il puntatore.
 - Le frecce e gli altri tasti non controllano il drone.
 
@@ -71,7 +77,9 @@ Mobile:
 - Il joystick sinistro dà accelerazione mentre è premuto.
 - Stick verso l’alto oltre la soglia: accelera e spara a raffica.
 - Stick verso il basso oltre la soglia: spara da fermo.
-- Lo swipe sul lato destro controlla yaw e pitch.
+- Tutta la superficie libera del display controlla yaw e pitch tramite swipe; joystick e pulsanti sono esclusi.
+- Durante uno swipe il rollio resta nell’ultima posizione finché il dito rimane appoggiato e comincia a rientrare soltanto al rilascio.
+- Il rollio mobile usa la distanza totale del gesto normalizzata al 12% del lato corto dello schermo, quindi non dipende dalla densità o dalla risoluzione del telefono.
 - I controlli mobile sono mostrati solo con puntatore coarse e larghezza massima 900 px.
 
 Non aggiungere testi di istruzioni permanenti nello HUD senza una richiesta esplicita. Il contatore resta visibile in alto; il pulsante quadrato in alto a destra attiva e disattiva la terza persona.
@@ -83,8 +91,10 @@ La fisica vive nel gruppo invisibile flyer; la mesh è soltanto la rappresentazi
 - Il volo usa la direzione calcolata da yaw e pitch.
 - L’ordine di rotazione del flyer è YXZ.
 - Il pitch visivo del modello segue il movimento realmente ottenuto nel frame. Il drone quindi non appare impennato quando collisioni, terreno o limiti impediscono un movimento verticale equivalente.
-- La prima persona usa un offset sul muso di 0,10 e un FOV dedicato di 105°.
-- Il FOV ampio e la posizione davanti al cockpit mostrano le punte delle quattro falci sui quattro lati dell’inquadratura.
+- In prima persona il corpo usa un layer separato e non viene renderizzato; le falci restano visibili.
+- La camera locale desktop e mobile usa attualmente Z = 0,10.
+- Il desktop usa FOV base 85° e zoom manuale 2; il mobile usa FOV base 105° e zoom manuale 1,4.
+- Gli zoom sono regolabili separatamente in DRONE_SETTINGS senza modificare fisica o terza persona.
 - La terza persona conserva il FOV della scena di 74°, distanza 2 e altezza 1,25.
 - In terza persona il mirino proietta la direzione reale di volo davanti al drone; non resta fissato al centro della mesh.
 - Durante le virate il modello esegue un rollio smorzato sul proprio asse longitudinale.
@@ -98,31 +108,33 @@ Non modificare fisica, hitbox o rapporto fra movimento e modello senza una richi
 
 DRONE_v2 è un modello low-poly costruito a partire da killer.png. Il gioco lo usa direttamente senza correzioni JavaScript di posizione, rotazione o scala.
 
-Stato canonico dell’asset alla revisione 48:
+Stato canonico dell’asset dalla revisione locale 49:
 
-- nome oggetto Blender: DRONE_v2
-- nome mesh: DRONE_v2_Mesh
-- posizione oggetto: 0, 0, 0
-- rotazione oggetto: 0°, 0°, 0°
-- scala oggetto: 1, 1, 1
+- oggetti Blender: DRONE_BODY e DRONE_BLADES
+- mesh: DRONE_BODY_Mesh e DRONE_BLADES_Mesh
+- posizione di entrambi gli oggetti: 0, 0, 0
+- rotazione di entrambi gli oggetti: 0°, 0°, 0°
+- scala di entrambi gli oggetti: 1, 1, 1
 - una unità Blender corrisponde a una unità del gioco
 - assi Blender: fronte +Y, alto +Z, ali lungo X
 - assi Three.js/GLB: fronte -Z, alto +Y, ali lungo X
 - raggio massimo della mesh: 0,372
 - raggio della hitbox sferica: 0,38
-- mesh sorgente Blender: 446 vertici e 840 triangoli
+- mesh sorgente Blender complessiva: 446 vertici e 840 triangoli
+- DRONE_BODY: 206 vertici e 376 triangoli
+- DRONE_BLADES: 240 vertici e 464 triangoli
 - limiti conservati nelle proprietà Blender: 1303 vertici e 2343 triangoli
 - falci esterne orizzontali e falci interne verticali
 
 Il cockpit è stato accorciato nella revisione 48: il punto frontale del corpo procedurale è passato da 0,205 a 0,155 prima della normalizzazione. Sono stati rimossi anche i tre pannelli verdi rettangolari che si trovavano sotto la vecchia gabbia. La gabbia tubolare, le piastre segnate dall’utente e le aste esterne erano già state eliminate nella revisione 46.
 
-L’URL attivo è ./DRONE_v2.glb?rev=48. Ogni volta che il binario viene sostituito, incrementare questa query per evitare che il browser combini codice nuovo e GLB in cache vecchio.
+L’URL attivo è ./DRONE_v2.glb?rev=49. Ogni volta che il binario viene sostituito, incrementare questa query per evitare che il browser combini codice nuovo e GLB in cache vecchio.
 
 ### Come modificare il drone in Blender
 
 1. Aprire DRONE_v2.blend.
-2. Modificare la mesh senza usare rotazioni, spostamenti o scale dell’oggetto per correggere l’orientamento.
-3. Conservare posizione 0, rotazione 0 e scala 1.
+2. Modificare DRONE_BODY o DRONE_BLADES senza usare rotazioni, spostamenti o scale dell’oggetto per correggere l’orientamento.
+3. Conservare per entrambi posizione 0, rotazione 0 e scala 1.
 4. Mantenere ogni vertice entro il raggio 0,38 e restare sotto 1303 vertici e 2343 triangoli.
 5. Esportare in GLB con asse Y verso l’alto e trasformazioni applicate, sovrascrivendo DRONE_v2.glb.
 6. Aggiornare modelUrl in drone.js, il contatore HTML e REVISION_COUNT.
@@ -130,7 +142,7 @@ L’URL attivo è ./DRONE_v2.glb?rev=48. Ogni volta che il binario viene sostitu
 
 Il file blend contiene proprietà personalizzate con assi, disposizione delle falci, raggio della hitbox, limiti geometrici e nota sulle trasformazioni.
 
-Blender verificato in questa sessione: 4.0.2. La scena contiene un solo oggetto DRONE_v2. Il runtime Python di Blender usa il site-packages già incluso nel runtime Codex per le dipendenze necessarie all’esportazione.
+Blender verificato in questa sessione: 4.0.2. La scena contiene due oggetti, DRONE_BODY e DRONE_BLADES. Il runtime Python di Blender usa `/tmp/blender_pydeps` per la dipendenza numpy necessaria all’esportazione GLB.
 
 ## Avvio locale
 
@@ -141,6 +153,8 @@ Dalla cartella /home/f/Documents/Codex/progetto27 eseguire:
     python3 avvia-locale.py
 
 Il launcher usa per impostazione predefinita http://127.0.0.1:8765/ e apre il browser. Si può passare una porta diversa come primo argomento. Fermare il server con Ctrl+C.
+
+Il server ascolta su 0.0.0.0 e stampa anche l’indirizzo LAN utilizzabile da un cellulare sulla stessa rete Wi-Fi. In questa sessione l’indirizzo rilevato era http://192.168.1.2:8765/; può cambiare dopo una riconnessione di rete.
 
 ## Cronologia della sessione: revisioni 34–48
 
@@ -169,6 +183,29 @@ Il launcher usa per impostazione predefinita http://127.0.0.1:8765/ e apre il br
 - Prima persona locale libera dal cockpit con quattro falci visibili.
 - Terza persona locale verificata senza errori di console.
 - GitHub Pages mostra la revisione 48; prima persona online caricata senza errori di console usando una query nuova.
+
+## Cronologia locale della sessione: revisioni 49–58
+
+- Revisione 49, commit locale 956194e: separazione Blender/GLB in DRONE_BODY e DRONE_BLADES, layer distinti e prime camere/FOV separati.
+- Revisione 50, commit locale 08c4662: correzione dell’assegnazione layer alle primitive figlie create da GLTFLoader.
+- Revisione 51, commit locale 33293d3: zoom manuale della prima persona desktop; il successivo commit 4fa3208 è marcato dal tag locale TEST0.
+- Revisione 52, commit locale 4fa7837: avvio HTTP accessibile dalla LAN e stampa dell’indirizzo per il cellulare.
+- Revisione 53, commit locale 0ac738e: zoom manuale separato per la prima persona mobile.
+- Revisione 54, commit locale 7241e2c: accelerazione con tasto destro e fuoco continuo con sinistro su desktop.
+- Revisione 55, commit locale 79a13fa: prima separazione degli stati dei due pulsanti del mouse.
+- Revisione 56, commit locale a4fdc7c: gestione desktop basata sul bitmask reale dei pulsanti, con movimento, fuoco e accelerazione simultanei.
+- Revisione 57, commit locale 19b97ee: area swipe mobile estesa all’intero display libero e ritorno del rollio rinviato al rilascio del dito.
+- Revisione 58, commit locale 2fa6fce: rollio mobile calcolato dalla distanza totale normalizzata del gesto e mantenuto esattamente finché il dito resta sul display.
+
+## Verifiche delle revisioni 49–58
+
+- Blender 4.0.2 collegato tramite bridge MCP; DRONE_BODY e DRONE_BLADES hanno trasformazioni canoniche.
+- Geometria complessiva invariata: 446 vertici, 840 triangoli e raggio massimo 0,372 entro l’hitbox 0,38.
+- GLB verificato con due nodi e 840 triangoli; query modello aggiornata a rev=49.
+- Sintassi JavaScript verificata come modulo ES e `git diff --check` eseguito dopo le revisioni.
+- Server locale verificato su 127.0.0.1:8765 e server LAN verificato con indirizzo 192.168.1.2:8765.
+- Normalizzazione rollio verificata su viewport 360×800, 430×932 e relativi landscape: uno spostamento pari al 12% del lato corto produce sempre input 1,0.
+- Il browser automatizzabile non era disponibile durante la revisione 58; la verifica tattile reale su più telefoni resta da confermare dopo la pubblicazione.
 
 ## Regole operative
 

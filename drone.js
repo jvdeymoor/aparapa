@@ -9,7 +9,7 @@ export const DRONE_SETTINGS = {
   // --- Dimensioni e modello 3D ---
   modelUrl: "./DRONE_v2.glb?rev=46", // Percorso e versione cache del GLB usato dal player.
   hitboxRadius: 0.38, // Raggio della sfera fisica del drone.
-  firstPersonCameraOffset: 0.18712463414227523, // Distanza dal centro alla camera sul muso.
+  firstPersonCameraOffset: 0.10, // Posizione della camera nel muso: evita che il cockpit copra la visuale.
 
   // --- Movimento e limiti verticali ---
   flightSpeed: 13, // Velocità in avanti quando si accelera.
@@ -26,6 +26,7 @@ export const DRONE_SETTINGS = {
   // --- Camera e mirino ---
   thirdPersonDistance: 2, // Distanza orizzontale della chase camera.
   thirdPersonHeight: 1.25, // Altezza della chase camera sopra il drone.
+  firstPersonFov: 105, // Campo visivo in prima persona: più alto mostra le quattro punte delle falci.
   firstPersonLookDistance: 1.4, // Distanza del punto guardato in prima persona.
   crosshairAimDistance: 18, // Distanza usata per proiettare il mirino in terza persona.
   crosshairScreenMargin: 16, // Margine minimo del mirino dai bordi dello schermo.
@@ -94,6 +95,7 @@ export class DroneController {
   }) {
     this.scene = scene;
     this.camera = camera;
+    this.thirdPersonFov = camera.fov;
     this.renderer = renderer;
     this.terrain = terrain;
     this.joystick = joystick;
@@ -546,6 +548,13 @@ export class DroneController {
   }
 
   updateCameraAndCrosshair() {
+    const targetFov = this.thirdPersonEnabled
+      ? this.thirdPersonFov
+      : DRONE_SETTINGS.firstPersonFov;
+    if (this.camera.fov !== targetFov) {
+      this.camera.fov = targetFov;
+      this.camera.updateProjectionMatrix();
+    }
     if (this.thirdPersonEnabled) {
       this.cameraFlatForward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
       this.cameraPosition.copy(this.flyer.position);

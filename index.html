@@ -308,7 +308,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">29</p>
+    <p id="modificationCounter" class="counter">30</p>
     <div class="crosshair"></div>
   </div>
 
@@ -400,7 +400,7 @@
     const cameraZoomRange = document.getElementById("cameraZoomRange");
     const cameraZoomNumber = document.getElementById("cameraZoomNumber");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 29;
+    const MODIFICATION_COUNT = 30;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -1105,7 +1105,7 @@
       angleX: -29,
       zoom: 0.5
     };
-    const cameraRightAxis = new THREE.Vector3();
+    const cameraOrbitAxis = new THREE.Vector3(1, 0, 0);
 
     function setCameraZoom(value) {
       cameraSettings.zoom = value;
@@ -1493,19 +1493,25 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // In prima persona la visuale è alla punta; in 3P usa gli offset del menu.
+        // In prima persona la visuale è alla punta. In 3P la camera orbita
+        // attorno al modello e lo guarda sempre, quindi resta saldo nel frame.
         const cameraBackZ = cameraSettings.thirdPerson ? cameraSettings.backZ : 0;
         const cameraUpY = cameraSettings.thirdPerson ? cameraSettings.upY : 0;
         cameraPosition.set(0, cameraUpY, -DRONE_V1_FRONT_TIP_OFFSET + cameraBackZ);
+        if (cameraSettings.thirdPerson) {
+          cameraPosition.applyAxisAngle(
+            cameraOrbitAxis,
+            THREE.MathUtils.degToRad(cameraSettings.angleX)
+          );
+        }
         cameraPosition.applyQuaternion(flyer.quaternion);
         cameraPosition.add(flyer.position);
 
-        cameraRightAxis.set(1, 0, 0).applyQuaternion(flyer.quaternion);
-        cameraLookTarget.copy(flightDirection).applyAxisAngle(
-          cameraRightAxis,
-          cameraSettings.thirdPerson ? THREE.MathUtils.degToRad(cameraSettings.angleX) : 0
-        );
-        cameraLookTarget.multiplyScalar(1.4).add(cameraPosition);
+        if (cameraSettings.thirdPerson) {
+          cameraLookTarget.copy(flyer.position);
+        } else {
+          cameraLookTarget.copy(cameraPosition).addScaledVector(flightDirection, 1.4);
+        }
         camera.position.copy(cameraPosition);
         camera.lookAt(cameraLookTarget);
       }

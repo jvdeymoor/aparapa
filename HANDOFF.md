@@ -119,4 +119,3 @@ Aggiornato il 2026-08-28 dopo la revisione completa della chat. Questa sezione r
 - La fonte di verità resta il repository remoto GitHub `jvdeymoor/progetto27`; il lavoro sul codice va salvato direttamente su `main`. La copia locale serve per analisi o strumenti locali.
 - Quando GitHub Pages mostra ancora una versione precedente, considerare la propagazione/cache e usare un ricaricamento senza cache o un URL di verifica con query string.
 - Quando l’utente chiede una modifica al progetto, mantenere le regole sopra, aggiornare il contatore e non ripristinare comportamenti già esclusi senza una nuova richiesta esplicita.
-

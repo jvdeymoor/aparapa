@@ -184,7 +184,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">24</p>
+    <p id="modificationCounter" class="counter">25</p>
     <div class="crosshair"></div>
   </div>
 
@@ -222,7 +222,7 @@
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 24;
+    const MODIFICATION_COUNT = 25;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -812,6 +812,7 @@
     let previousLookY = 0;
     let mouseLookPointer = null;
     let decorativeDrone = null;
+    let decorativeDroneComparisonSphere = null;
     let decorativeDronePlaced = false;
     const decorativeDroneAnchor = new THREE.Vector3();
 
@@ -828,6 +829,11 @@
       decorativeDrone.rotateX(Math.PI * 0.5);
       decorativeDrone.scale.setScalar(0.12);
       decorativeDrone.visible = true;
+      if (decorativeDroneComparisonSphere) {
+        decorativeDroneComparisonSphere.position.copy(decorativeDrone.position);
+        decorativeDroneComparisonSphere.position.x += 0.8;
+        decorativeDroneComparisonSphere.visible = true;
+      }
       decorativeDronePlaced = true;
     }
 
@@ -844,6 +850,19 @@
           object.receiveShadow = true;
         });
         scene.add(decorativeDrone);
+
+        // Riferimento visivo: stesso raggio della hitbox sferica del player.
+        decorativeDroneComparisonSphere = new THREE.Mesh(
+          new THREE.SphereGeometry(flyerHitboxRadius, 24, 16),
+          new THREE.MeshBasicMaterial({
+            color: 0xffd45c,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.9
+          })
+        );
+        decorativeDroneComparisonSphere.visible = false;
+        scene.add(decorativeDroneComparisonSphere);
         placeDecorativeDrone();
       },
       undefined,

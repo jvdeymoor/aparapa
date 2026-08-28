@@ -184,7 +184,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">23</p>
+    <p id="modificationCounter" class="counter">24</p>
     <div class="crosshair"></div>
   </div>
 
@@ -222,7 +222,7 @@
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 23;
+    const MODIFICATION_COUNT = 24;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -804,7 +804,6 @@
     const bounceVelocity = new THREE.Vector3();
     const bounceTilt = new THREE.Vector3();
     let started = false;
-    const DECORATIVE_DRONE_PROPULSION_SPEED = 1.8;
     const clock = new THREE.Clock();
     const mobileMove = { x: 0, y: 0 };
     let joystickPointer = null;
@@ -815,7 +814,6 @@
     let decorativeDrone = null;
     let decorativeDronePlaced = false;
     const decorativeDroneAnchor = new THREE.Vector3();
-    const decorativeDroneDirection = new THREE.Vector3();
 
     function placeDecorativeDrone() {
       if (!started || !decorativeDrone || decorativeDronePlaced) return;
@@ -824,8 +822,6 @@
       decorativeDroneAnchor.add(flyer.position);
       decorativeDroneAnchor.addScaledVector(flightDirection, 1);
       decorativeDrone.position.copy(decorativeDroneAnchor);
-      // Il test del modello usa l'asse globale X positivo.
-      decorativeDroneDirection.set(1, 0, 0);
       // Punto zero del drone: orientamento predefinito di +90° sull'asse X.
       decorativeDrone.quaternion.copy(flyer.quaternion);
       decorativeDrone.rotateY(Math.PI * 0.5);
@@ -835,13 +831,6 @@
       decorativeDronePlaced = true;
     }
 
-    function updateDecorativeDrone(delta) {
-      if (!started || !decorativeDrone || !decorativeDronePlaced) return;
-      decorativeDrone.position.addScaledVector(
-        decorativeDroneDirection,
-        DECORATIVE_DRONE_PROPULSION_SPEED * delta
-      );
-    }
 
     const decorativeDroneLoader = new GLTFLoader();
     decorativeDroneLoader.load(
@@ -1220,7 +1209,6 @@
       const delta = Math.min(clock.getDelta(), 0.05);
       moveFlyer(delta);
       updateProjectiles(delta);
-      updateDecorativeDrone(delta);
 
       if (flyer) {
         // La camera segue il drone giocabile; il modello statico resta nel mondo

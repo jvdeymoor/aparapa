@@ -206,7 +206,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">35</p>
+    <p id="modificationCounter" class="counter">36</p>
     <div class="crosshair"></div>
   </div>
 
@@ -250,7 +250,7 @@
 
     const thirdPersonQuickToggle = document.getElementById("thirdPersonQuickToggle");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 35;
+    const MODIFICATION_COUNT = 36;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -304,6 +304,9 @@
     // DRONE_v1: distanza misurata tra le due punte estreme delle ali.
     const DRONE_V1_WINGTIP_DISTANCE = 13.5;
     const DRONE_V1_SCALE = (flyerHitboxRadius * 2) / DRONE_V1_WINGTIP_DISTANCE;
+    // La geometria del GLB ha l’asse longitudinale inclinato di 13,2° rispetto
+    // al suo +Y locale: questo offset riallinea il corpo alla direzione reale.
+    const DRONE_V1_FORWARD_AXIS_CORRECTION = THREE.MathUtils.degToRad(13.2);
     // Punta frontale rispetto al centro geometrico già calcolato dal file GLB.
     const DRONE_V1_FRONT_TIP_OFFSET = (3.5704264640808105 - 0.24650204181671143) * DRONE_V1_SCALE;
     const projectiles = [];
@@ -896,10 +899,11 @@
 
       // Il modello è figlio del controller: il suo centro coincide con la hitbox.
       decorativeDrone.position.set(0, 0, 0);
-      // +90° su X e correzione su Y per allineare la punta frontale al volo.
+      // Corregge sia l’orientamento degli assi sia l’inclinazione intrinseca
+      // della geometria, così il corpo punta lungo l’effettiva traiettoria.
       decorativeDrone.rotation.set(0, 0, 0);
       decorativeDrone.rotateY(Math.PI);
-      decorativeDrone.rotateX(Math.PI * 0.5);
+      decorativeDrone.rotateX(Math.PI * 0.5 + DRONE_V1_FORWARD_AXIS_CORRECTION);
       decorativeDrone.scale.setScalar(DRONE_V1_SCALE);
       decorativeDrone.visible = true;
       decorativeDronePlaced = true;

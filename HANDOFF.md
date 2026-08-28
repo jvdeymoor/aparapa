@@ -168,7 +168,7 @@ Il launcher usa per impostazione predefinita http://127.0.0.1:8765/ e apre il br
 - DRONE_v2.blend e DRONE_v2.glb riesportati insieme.
 - Prima persona locale libera dal cockpit con quattro falci visibili.
 - Terza persona locale verificata senza errori di console.
-- Pubblicazione GitHub Pages da verificare sempre con una query nuova per evitare cache precedenti.
+- GitHub Pages mostra la revisione 48; prima persona online caricata senza errori di console usando una query nuova.
 
 ## Regole operative
 

@@ -1,135 +1,169 @@
-# Handoff — progetto27
+# HANDOFF — progetto27
 
-## Progetto
+Aggiornato il 28 agosto 2026 dopo la revisione 42. Questo documento descrive lo stato corrente e sostituisce integralmente le note precedenti in caso di conflitto.
 
-- Base principale del progetto: `/home/f/Documents/Codex/progetto27` (cartella da usare come riferimento operativo per il lavoro locale).
-- Repository GitHub: `jvdeymoor/progetto27`
-- Sito pubblicato: `https://jvdeymoor.github.io/progetto27/`
-- Branch e pubblicazione: `main`, cartella principale (`/(root)`) tramite GitHub Pages.
-- Il repository contiene attualmente il file principale `index.html`.
+## Riferimenti
 
-## Stato attuale
+- Cartella locale di lavoro: /home/f/Documents/Codex/progetto27
+- Repository: jvdeymoor/progetto27
+- Branch pubblicato: main
+- Sito: https://jvdeymoor.github.io/progetto27/
+- GitHub Pages pubblica la cartella principale del branch main.
+- Ultimo commit funzionale della revisione 42: 2aa28b6c7dd125f74cf975eca100976af6f6b49f
+- Contatore visibile e costante REVISION_COUNT: 42
 
-È disponibile una versione giocabile di un mondo 3D urbano con protagonista volante:
+La fonte di verità è il repository remoto su GitHub. La cartella locale serve per Blender, verifiche e strumenti che richiedono file locali.
 
-- terreno procedurale a chunk, con quattro profili: pianura, leggermente mosso, scosceso e montagna;
-- profili diversi per ogni area, interpolati ai bordi per evitare scalini;
-- altezza globale regolabile tramite `TERRAIN.verticalScale`;
-- terreno urbano con asfalto dominante e chiazze di ghiaia, terra, cemento e poca erba;
-- città procedurale per chunk con grattacieli ravvicinati, torri di altezze diverse, facciate in cemento/vetro, fasce luminose, tetti piatti e fondamenta profonde 2,6 metri;
-- generazione deterministica tramite seed;
-- chunk da 64×64 con 32 suddivisioni per lato;
-- caricamento dinamico dei chunk in una griglia 5×5 attorno al giocatore;
-- bordi dei chunk coerenti perché l’altezza usa coordinate globali;
-- protagonista trasformato in un drone completamente sferico, controllato in terza persona, grande circa quanto un pallone da calcio, con spawn automatico in posizione libera sopra la linea dei tetti;
-- il drone resta sopra il terreno e i chunk seguono la sua posizione;
-- hitbox sferica ridotta per il drone (raggio 0,38), visualizzata con due soli cerchi gialli incrociati; hitbox AABB dei grattacieli con perimetro del corpo e altezza passante dentro le fondamenta, evidenziata in giallo con profondità corretta;
-- cielo, nebbia, illuminazione e nuvole, senza alberi;
-- pilotaggio su PC con WASD/frecce e mouse o trascinamento;
-- visuale su PC con mouse, puntatore bloccato quando disponibile e trascinamento fallback;
-- joystick virtuale a sinistra su cellulare: tenerlo premuto dà spinta; per ora spostare il pomello non cambia direzione o altezza;
-- swipe sul lato destro dello schermo per controllare visuale e direzione come il mouse su PC;
-- sparo con proiettili frontali: spingendo lo stick verso l’alto oltre metà raggio si spara a raffica;
-- avvio in finestra del browser, senza richiesta automatica di fullscreen;
-- schermata iniziale con pulsante `INIZIA`.
+## Struttura corrente
 
-La pagina carica Three.js 0.160.0 da jsDelivr. Non sono necessari altri asset locali.
+- index.html: inizializzazione della scena, luci, renderer, menu iniziale, HUD e ciclo principale.
+- drone.js: DRONE_SETTINGS e classe DroneController; contiene modello, movimento, collisioni, camera, mirino, input e laser.
+- terrain.js: TERRAIN_SETTINGS, BUILDING_SETTINGS e classe TerrainWorld; contiene terreno, edifici, hitbox e confini.
+- DRONE_v1.glb: asset del drone già normalizzato nelle unità e negli assi del gioco.
+- DRONE_v1.blend: sorgente Blender modificabile del medesimo asset, con trasformazioni applicate.
+- avvia-locale.py: server HTTP locale e apertura automatica del browser.
+- HANDOFF.md: stato operativo del progetto.
 
-Codex è ora collegato a Blender per poter lavorare direttamente sulle scene e visualizzare le modifiche nel viewport; Blender deve rimanere aperto durante questo tipo di lavoro.
+I parametri modificabili sono raccolti all’inizio dei rispettivi file e segnalati da commenti facili da trovare:
+
+- CERCA: SETTAGGI SCENA in index.html
+- CERCA: SETTAGGI DRONE in drone.js
+- CERCA: SETTAGGI TERRENO in terrain.js
+- CERCA: SETTAGGI EDIFICI in terrain.js
+- CERCA: SETTAGGI AVVIO LOCALE in avvia-locale.py
+
+Le classi e i parametri pubblici hanno commenti semplici in italiano. Per il normale bilanciamento usare questi blocchi, senza modificare la logica interna.
+
+## Stato del gioco
+
+È disponibile un mondo 3D urbano giocabile con:
+
+- centro cittadino piatto e cintura esterna montuosa;
+- terreno procedurale deterministico a chunk da 64 unità e 32 segmenti per lato;
+- raggio di caricamento 3, quindi fino a una griglia 7 × 7 attorno al drone;
+- limite invisibile della mappa a 192 unità dal centro;
+- città centrale fino a 400 edifici;
+- edifici alieni leggeri con geometria e materiali riutilizzati, rientri e nicchie che non aumentano la hitbox;
+- hitbox AABB aderenti al corpo visibile degli edifici;
+- drone con hitbox sferica di raggio 0,38;
+- collisioni con rimbalzo, quota minima sul terreno e quota massima;
+- laser con pooling, durata limitata e massimo 32 elementi attivi;
+- cielo, nebbia, luci, ombre contenute e nuvole;
+- schermata iniziale con pulsante INIZIA e nessuna richiesta automatica di schermo intero.
+
+Three.js 0.160.0 e GLTFLoader sono caricati tramite import map da jsDelivr.
+
+## Controlli
+
+Desktop:
+
+- W accelera in avanti.
+- Mouse controlla yaw e pitch; il pointer lock viene usato quando disponibile.
+- Il trascinamento sul canvas resta il fallback quando il browser rifiuta il pointer lock.
+- Click sinistro spara.
+- Esc libera il puntatore.
+- Le frecce e gli altri tasti non controllano il drone.
+
+Mobile:
+
+- Il joystick sinistro dà accelerazione mentre è premuto.
+- Stick verso l’alto oltre la soglia: accelera e spara a raffica.
+- Stick verso il basso oltre la soglia: spara da fermo.
+- Lo swipe sul lato destro controlla yaw e pitch.
+- I controlli mobile sono mostrati solo con puntatore coarse e larghezza massima 900 px.
+
+Non aggiungere testi di istruzioni permanenti nello HUD senza una richiesta esplicita. Il contatore resta visibile in alto; il pulsante quadrato in alto a destra attiva e disattiva la terza persona.
+
+## Movimento, camera e mirino
+
+La fisica vive nel gruppo invisibile flyer; la mesh è soltanto la rappresentazione visiva e non sostituisce la hitbox.
+
+- Il volo usa la direzione calcolata da yaw e pitch.
+- L’ordine di rotazione del flyer è YXZ.
+- Il pitch visivo del modello segue il movimento realmente ottenuto nel frame. In questo modo il drone non appare impennato di circa 90° quando collisioni, terreno o limiti impediscono un movimento verticale equivalente.
+- La prima persona usa una camera sul muso con offset 0,18712463414227523.
+- La terza persona è una chase camera con distanza 2 e altezza 1,25.
+- In terza persona il mirino proietta la direzione reale di volo davanti al drone; non deve restare fissato al centro della mesh.
+- Durante le virate il modello esegue un rollio smorzato sul proprio asse longitudinale.
+- Il valore corrente maxTurnBankDegrees è 50.
+- Il rollio è più leggero senza accelerazione, con fattore 0,6.
+- bankDirection è -1, cioè il verso richiesto nell’ultima correzione.
+- Entrata, mantenimento e ritorno del rollio sono regolabili in DRONE_SETTINGS.
+
+Non modificare fisica, hitbox o rapporto tra movimento e modello senza una richiesta esplicita.
+
+## Asset DRONE_v1 e Blender
+
+Dalla revisione 42 orientamento, posizione e scala non vengono più corretti da JavaScript. Sono incorporati direttamente in DRONE_v1.glb e DRONE_v1.blend.
+
+Stato canonico dell’asset:
+
+- nome oggetto Blender: DRONE_v1
+- nome mesh: DRONE_v1_Mesh
+- posizione oggetto: 0, 0, 0
+- rotazione oggetto: 0°, 0°, 0°
+- scala oggetto: 1, 1, 1
+- apertura tra le estremità delle ali: 0,76 unità
+- una unità Blender corrisponde a una unità del gioco
+- assi Blender: fronte +Y, alto +Z, ali lungo X
+- assi Three.js/GLB: fronte -Z, alto +Y, ali lungo X
+- l’origine corrisponde esattamente al centro del controller usato prima della normalizzazione
+
+Il vecchio caricamento eseguiva al runtime:
+
+1. centratura tramite il bounding box originale;
+2. scala uniforme 0,0562962962963;
+3. rotazione locale Y di 180°;
+4. rotazione locale X di 103,2°.
+
+Queste trasformazioni sono ora applicate ai vertici dell’asset. drone.js carica la scena GLB a posizione zero, rotazione zero e scala uno. Non reintrodurre le vecchie correzioni.
+
+Il confronto fra il vecchio risultato runtime e il nuovo GLB normalizzato ha dato un errore massimo fra vertici inferiore a 0,00000007 unità. Il file pubblicato è stato inoltre verificato nel gioco locale e su GitHub Pages.
+
+L’URL corrente è ./DRONE_v1.glb?rev=42. Quando il binario viene sostituito in futuro, incrementare anche questa query di versione per evitare che il browser combini codice nuovo e GLB in cache vecchio.
+
+### Come modificare il drone in Blender
+
+1. Aprire DRONE_v1.blend, non il vecchio GLB recuperato dalla cronologia.
+2. Modificare normalmente la mesh in Edit Mode.
+3. Non ruotare, spostare o scalare l’oggetto per correggere l’orientamento: il file è già pronto per il gioco.
+4. Se una trasformazione in Object Mode è davvero necessaria, applicarla prima dell’esportazione e riportare l’oggetto a posizione 0, rotazione 0 e scala 1.
+5. Esportare in GLB con asse Y verso l’alto e trasformazioni applicate, sovrascrivendo DRONE_v1.glb.
+6. Aggiornare la versione cache in drone.js, incrementare il contatore e verificare prima locale e poi online.
+
+Il file blend contiene anche proprietà personalizzate con gli assi, l’apertura alare, il raggio della hitbox e una nota sulle trasformazioni.
+
+Blender usato nella sessione: 4.0.2. L’importatore GLTF inizialmente non trovava numpy; il problema è stato risolto aggiungendo al Python 3.12 di Blender il site-packages già incluso nel runtime Codex. Non è stato necessario installare nulla.
+
+## Avvio locale
+
+Non aprire index.html con file://: i moduli ES e il GLB vengono bloccati dalle regole di sicurezza del browser.
+
+Dalla cartella /home/f/Documents/Codex/progetto27 eseguire:
+
+    python3 avvia-locale.py
+
+Il launcher usa per impostazione predefinita http://127.0.0.1:8765/ e apre il browser. Si può passare una porta diversa come primo argomento. Fermare il server con Ctrl+C.
+
+## Cronologia della sessione: revisioni 34–42
+
+- Revisione 34, commit 64f137c: ordine di rotazione YXZ per rendere coerenti le rotazioni del modello in tutte le direzioni.
+- Revisione 35, commit d0dd3ac: mirino in terza persona proiettato nella direzione di volo, pitch visivo basato sul movimento reale e primo rollio di virata.
+- Revisione 36, commit 752589d: correzione dell’inclinazione interna originale del modello di 13,2°.
+- Revisione 37, commit 50a35cd: rollio massimo portato a 50°.
+- Revisione 38, commit 83ddbd0: rollio più rapido, sostenuto e leggibile durante la virata.
+- Revisione 39, commit b56a3b6: inversione del verso del rollio.
+- Revisione 40, commit b816731, 5772bf1 e 630b846: separazione in drone.js e terrain.js, blocchi di settaggi e commenti italiani.
+- Revisione 41, commit 064e2ab e 1ce22a8: launcher HTTP locale e documentazione del problema file://.
+- Revisione 42, commit 2aa28b6: trasformazioni incorporate nel GLB, aggiunta del file blend, rimozione delle correzioni runtime e cache bust dell’asset.
 
 ## Regole operative
 
-- **Fonte di verità:** per il progetto fa fede il contenuto remoto del repository GitHub `jvdeymoor/progetto27`, sul branch `main`. La copia locale non sostituisce GitHub.
-- **Aggiornamento dell’handoff:** modificare `HANDOFF.md` solo quando l’utente lo chiede esplicitamente. Ogni aggiornamento deve essere applicato prima all’handoff remoto su GitHub e poi replicato nell’handoff locale, mantenendo i due file identici.
-- **Lavoro sul progetto e working tree:** file, modifiche, commit, pubblicazione e controllo dello stato del progetto si gestiscono direttamente su GitHub; non trattare la cartella locale come working tree o fonte di verità del progetto.
-- **Uso del percorso locale:** quando serve un percorso locale per analisi, test o strumenti che richiedono file locali, usare esclusivamente `/home/f/Documents/Codex/progetto27`, indicato nell’handoff locale. Dopo il lavoro, la versione di riferimento resta quella remota su GitHub.
-- **Connessione a GitHub:** usare il connettore/plugin GitHub per leggere il repository `jvdeymoor/progetto27`, verificare il branch `main`, leggere i file remoti e controllare l’ultimo commit prima di operare. Per modifiche al repository usare le operazioni GitHub autorizzate e verificare il risultato remoto.
-- **Controllo del bridge Blender:** Blender deve essere aperto. Verificare il collegamento con `blender_ping`, quindi controllare versione e scena con `blender_version` e `blender_scene_info`. Quando serve un controllo operativo, usare anche `blender_exec_python` in sola lettura e/o `blender_capture_viewport`; riportare chiaramente eventuali errori o se è caricata la scena predefinita invece della scena del progetto.
-
-## Ultima modifica
-
-I commit `666c77d7b7136af16a4d1d57ebe2092231246244`, `64f711a57d554076b1986238a48e3d1533956239`, `5f4d3ad4da1cb3d7a13ceefd8dd14378dbe674b7`, `575e138c2e1e974ad1d176a80daaeb581f8a5af3`, `91526c4971a717fbeeca85c1b3d4cfe1f8aa1305`, `51770673a22d3874a00a7b47ef524515a4894338`, `96330524b6596781f59052309b4a2b00228a0b2a`, `cc495f07c6bf5563c8add9c0cc1019e7df9dc7b4`, `aea425098a6d23f6540dd23104ae4b7d7676ed89`, `05ad67c220a06700bacc63248bbdf59d3bf7fc4e`, `5bf8fb67168d85ba3bb85caeec7c4ad6e8e769bb`, `5f522270887a0c6f720f52af3ac50cff4827c27`, `726b523f0cd2f6b210520d914fb6dedf72ae63de`, `7532d37e745be2060d125d7d17c86a0480bb2295` e `06fabcafd3cbf8309668095aed471088befb09d7`, `6687eff002cb2c78dbe682101f4bd4dba20e86c5` e `4b41b5a90a9d4f13fa85d712ee75351d9f2f1c23` e `c07d528b89491a94e60615b952e8813aa774ad43` e `e10c212dd06105779577fded3b6badfec94d5ddf` aggiungono il terreno procedurale, correggono l’orientamento dei triangoli, introducono i quattro profili con superfici colorate, il controllo globale dell’altezza, l’avvio senza fullscreen automatico, le costruzioni procedurali, la città compatta di grattacieli e il volo in terza persona con drone sferico, hitbox e sparo, lo spawn sicuro e l’allineamento delle hitbox dei palazzi alle torri. Il commit attuale di `index.html` è `e10c212dd06105779577fded3b6badfec94d5ddf`. Il codice è stato controllato sintatticamente, verificato nel browser e salvato direttamente su `main`.
-
-## Prossimi sviluppi possibili
-
-- aggiungere collisioni con punti di interesse;
-- aggiungere materiali più dettagliati o texture;
-- aggiungere acqua, fiumi e biomi;
-- aggiungere suoni e musica;
-- aggiungere un menu e un sistema di salvataggio;
-- ottimizzare il numero di suddivisioni e il caricamento per telefoni meno potenti.
-
-## Note importanti
-
-- Non inserire password, token o credenziali nel repository.
-- Dopo ogni commit su `main`, GitHub Pages aggiorna il sito dopo alcuni minuti.
-- Se il sito mostra ancora la versione precedente, attendere la propagazione della pubblicazione o ricaricare senza cache.
-
-## Uso del plugin GitHub in Codex
-
-Il plugin GitHub è collegato all’account e permette di leggere e aggiornare i file del repository direttamente da Codex.
-
-Per continuare il lavoro, indicare chiaramente:
-
-> Modifica direttamente il repository `jvdeymoor/progetto27`, aggiorna `index.html` e salva su `main`.
-
-Nelle attività Codex supportate il plugin può essere selezionato da `Sources` → `Use plugins` → `GitHub`, oppure richiamato con `@GitHub`. Le modifiche al repository possono richiedere una conferma.
-
-
-## ULTIMI AGGIORNAMENTI
-
-Aggiornato il 2026-08-28 dopo la revisione completa della chat. Questa sezione raccoglie le regole e le decisioni più recenti, che hanno precedenza sulle descrizioni più vecchie presenti sopra quando sono in conflitto.
-
-### Controlli e comportamento del drone
-
-- Le frecce non servono per ruotare il drone e non devono essere presentate come controlli. Su PC l’unico tasto di movimento è **W** per accelerare; il click sinistro spara. Il mouse controlla la visuale tramite pointer lock quando disponibile; **Esc** libera il mouse. Gli altri tasti non fanno nulla.
-- Su mobile il joystick serve per accelerare; spingendolo verso l’alto si spara mentre si accelera, tirandolo verso il basso si spara da fermo. Tutte le rotazioni e il controllo della visuale avvengono con swipe della mano destra sullo schermo.
-- I controlli mobile devono sparire sugli schermi grandi; il riferimento attuale è la media CSS `(pointer: coarse) and (max-width: 900px)`.
-- Non modificare il movimento, la fisica o gli hitbox del player senza una richiesta esplicita. La propulsione di verifica richiesta nella chat appartiene esclusivamente al modello 3D decorativo, non al player.
-- Non aggiungere testi di istruzioni come “premi”, “vola” o “swipe” nella scena/HUD. Il titolo “Il mio mondo” in alto è stato rimosso; deve restare solo il contatore.
-
-### Modello 3D DRONE_v1
-
-- `DRONE_v1.glb` viene caricato dalla cartella locale `/home/f/Documents/Codex/progetto27` per l’analisi e dall’asset `./DRONE_v1.glb` nel sito. È un modello decorativo separato: non è il modello del player e non deve essere usato come sua hitbox o controller.
-- A inizio partita il modello viene piazzato circa un metro davanti alla camera/player.
-- Il punto zero/rotazione predefinita dello spawn usa **+90° sull’asse X** (non -90°), mantenendo l’allineamento Y già presente nel codice.
-- Per la verifica visiva, la propulsione costante è applicata soltanto al modello DRONE_v1. L’ultima direzione impostata è l’asse globale X positivo: `decorativeDroneDirection.set(1, 0, 0)`, con velocità `1.8`. Il player deve rimanere fermo senza input.
-- Se viene cambiato l’orientamento del modello, verificare sempre che punta, asse di traslazione e direzione di volo coincidano; non correggere il problema spostando la propulsione sul player.
-
-### Città, terreno e hitbox
-
-- La zona di gioco è un blocco centrale urbano con terreno piatto, circondato da una cintura senza edifici in cui il terreno sale e diventa montagnoso/variegato. Un grande limite invisibile chiude l’area giocabile.
-- La generazione procedurale è stata riscritta e la città può contenere al massimo **400 edifici**; l’ultima richiesta di 400 sostituisce il precedente limite di 300.
-- Gli edifici devono essere semplici e diversi tra loro, costruiti con una mesh condivisa e computazionalmente leggera: parallelepipedi con finte finestre/architettura aliena, scanalature verticali, nicchie scavate e anelli/rientranze verso l’interno. Evitare anelli o dettagli che sporgono e possono creare intersezioni.
-- Ogni hitbox di edificio deve essere sempre un parallelepipedo AABB aderente alla parte visibile della torre/muro. Non deve includere podio, fondamenta o volume extra; il drone non può scendere al livello del podio.
-- Il terreno deve essere sempre presente. La zona centrale resta piatta, mentre la cintura esterna usa rilievi montagnosi e colori/varietà coerenti.
-- Mantenere le ombre a risoluzione contenuta e privilegiare la semplicità delle mesh, il riuso delle geometrie e il limite ai laser attivi.
-
-### Proiettili e prestazioni
-
-- I laser devono andare dritti nella direzione di sparo, avere una durata limitata e scaricarsi automaticamente.
-- Il sistema usa pooling, geometria/materiale riutilizzati e un limite agli elementi attivi; evitare di creare e distruggere continuamente mesh durante il gioco.
-- Per la pagina Three.js, usare un import map coerente per `three` e `three/addons/`; il precedente import diretto del loader con lo specifier bare `three` bloccava il caricamento della pagina.
-
-### Contatore e abitudini di lavoro
-
-- Il contatore visibile è un contatore di revisione del progetto, non un valore di gameplay. Dopo l’ultima modifica al progetto il valore corrente è **33**.
-- Incrementare sempre il contatore a ogni modifica pubblicata al codice del progetto e aggiornare sia il valore HTML iniziale sia `MODIFICATION_COUNT` in `index.html`.
-- Prima di chiudere una modifica: leggere/verificare il contenuto remoto su GitHub `main`, controllare la sintassi, verificare la pagina pubblicata e controllare che non compaiano errori JavaScript.
-- La fonte di verità resta il repository remoto GitHub `jvdeymoor/progetto27`; il lavoro sul codice va salvato direttamente su `main`. La copia locale serve per analisi o strumenti locali.
-- Quando GitHub Pages mostra ancora una versione precedente, considerare la propagazione/cache e usare un ricaricamento senza cache o un URL di verifica con query string.
-- Quando l’utente chiede una modifica al progetto, mantenere le regole sopra, aggiornare il contatore e non ripristinare comportamenti già esclusi senza una nuova richiesta esplicita.
-
-
-### Aggiornamento della sessione del 2026-08-28 — revisioni 24–33
-
-Queste note sostituiscono ogni istruzione precedente in conflitto.
-
-- Il contatore di revisione corrente è **33**. L’ultimo commit di `index.html` è `142715fdf8f41466967349b152a389b561cb6718`; l’ultima revisione pubblicata è la 33.
-- `DRONE_v1.glb` non è più un oggetto decorativo separato: è il modello visivo del player. Il controller, la fisica e l’hitbox restano nel gruppo sferico invisibile `flyer` con raggio `0,38`; il modello è figlio di quel controller e il suo centro geometrico coincide con il centro della hitbox.
-- La distanza misurata tra le punte estreme delle ali è `13,5`. Il modello è scalato a `0,0562962963`, così l’apertura alare è `0,76`, uguale al diametro della hitbox. Non esiste più alcuna propulsione automatica di test.
-- L’orientamento base attuale del modello usa `rotateY(Math.PI)` e `rotateX(Math.PI * 0.5)`, con la punta frontale allineata alla direzione di volo del player. Non modificare questo allineamento, né i controlli o la fisica, senza una nuova richiesta esplicita.
-- In prima persona la camera è alla punta frontale del modello e resta nel volume dell’hitbox. In alto a destra c’è un unico pulsante senza testo per attivare/disattivare la terza persona; è giallo quando attiva. Non sono più presenti menu, slider, valori manuali o pulsanti testuali `3P`.
-- La terza persona attuale è una chase camera: segue la posizione e la direzione orizzontale data da `yaw`, guarda il centro del player e usa distanza orizzontale `2` e altezza `1,25`. Questa configurazione è il ripristino della chase camera precedente, mantenendo il solo avvicinamento richiesto.
-- La distanza minima orizzontale tra gli AABB degli edifici è `MIN_BUILDING_CLEARANCE = flyerHitboxRadius * 2 * 1.15`, cioè `0,874`. Il controllo avviene sia rispetto agli edifici del chunk corrente sia rispetto ai chunk già caricati.
-- Le modifiche di questa sessione hanno prodotto i commit `6caea0f`, `9d4c05d`, `aebedb`, `cf924dd`, `87979e`, `a7a7fb`, `5f6503f`, `e4845b0`, `fcc2693` e `142715f`. GitHub Pages può mostrare una revisione precedente durante la propagazione/cache.
+- Prima di modificare, leggere lo stato corrente di main su GitHub.
+- Pubblicare le modifiche al progetto direttamente sul branch main tramite il connettore GitHub.
+- Incrementare sempre sia il numero HTML iniziale sia REVISION_COUNT per ogni revisione del codice.
+- Dopo la pubblicazione attendere GitHub Pages, aprire un URL con query nuova e controllare revisione, console e comportamento reale.
+- Aggiornare HANDOFF.md soltanto quando l’utente lo chiede esplicitamente.
+- Quando viene aggiornato, modificare prima HANDOFF.md remoto e poi la copia locale, mantenendoli identici.
+- Per operazioni Blender verificare prima connessione, versione e scena; segnalare eventuali errori.
+- Non salvare credenziali, token o password nel repository.

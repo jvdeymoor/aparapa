@@ -7,7 +7,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 // ============================================================================
 export const DRONE_SETTINGS = {
   // --- Dimensioni e modello 3D ---
-  modelUrl: "./DRONE_v2.glb?rev=43", // Percorso e versione cache del GLB usato dal player.
+  modelUrl: "./DRONE_v2.glb?rev=44", // Percorso e versione cache del GLB usato dal player.
   hitboxRadius: 0.38, // Raggio della sfera fisica del drone.
   firstPersonCameraOffset: 0.18712463414227523, // Distanza dal centro alla camera sul muso.
 

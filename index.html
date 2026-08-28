@@ -125,6 +125,113 @@
       box-shadow: 0 2px 0 #b28612;
     }
 
+    #thirdPersonButton {
+      position: fixed;
+      z-index: 4;
+      top: 18px;
+      right: 20px;
+      min-width: 52px;
+      min-height: 42px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 12px;
+      background: rgba(16, 49, 66, 0.78);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      backdrop-filter: blur(6px);
+    }
+
+    #cameraMenu {
+      position: fixed;
+      z-index: 7;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 22px;
+      background: rgba(8, 27, 39, 0.68);
+      pointer-events: auto;
+    }
+
+    #cameraMenu.open {
+      display: grid;
+    }
+
+    .camera-menu-card {
+      width: min(520px, 100%);
+      max-height: min(720px, 100%);
+      overflow: auto;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 20px;
+      background: rgba(22, 57, 73, 0.95);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .camera-menu-card h2 {
+      margin: 0 0 20px;
+      font-size: 1.25rem;
+    }
+
+    .camera-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 0 22px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      font-weight: 800;
+    }
+
+    .camera-switch input {
+      width: 24px;
+      height: 24px;
+      accent-color: #f6ca35;
+    }
+
+    .camera-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 94px;
+      gap: 8px 12px;
+      margin: 0 0 18px;
+    }
+
+    .camera-control label {
+      grid-column: 1 / -1;
+      font-weight: 700;
+    }
+
+    .camera-control input[type="range"] {
+      width: 100%;
+      accent-color: #f6ca35;
+    }
+
+    .camera-control input[type="number"] {
+      width: 100%;
+      min-height: 36px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font: inherit;
+    }
+
+    #closeCameraMenu {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 12px;
+      background: #f6ca35;
+      color: #173a2b;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+    }
+
     #touchControls {
       display: none;
       position: fixed;
@@ -184,7 +291,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">27</p>
+    <p id="modificationCounter" class="counter">28</p>
     <div class="crosshair"></div>
   </div>
 
@@ -192,6 +299,45 @@
     <div id="joystick"><div id="joystickKnob"></div></div>
     <div id="lookArea"></div>
   </div>
+
+
+  <button id="thirdPersonButton" type="button" aria-controls="cameraMenu">3P</button>
+
+  <section id="cameraMenu" aria-hidden="true">
+    <div class="camera-menu-card" role="dialog" aria-modal="true" aria-labelledby="cameraMenuTitle">
+      <h2 id="cameraMenuTitle">Camera</h2>
+      <label class="camera-switch" for="thirdPersonSwitch">
+        <span>Terza persona</span>
+        <input id="thirdPersonSwitch" type="checkbox">
+      </label>
+
+      <div class="camera-control">
+        <label for="cameraBackZRange">Traslazione camera Z</label>
+        <input id="cameraBackZRange" type="range" min="0" max="0.567195" step="0.001" value="0">
+        <input id="cameraBackZNumber" type="number" min="0" max="0.567195" step="0.001" value="0" inputmode="decimal" aria-label="Valore traslazione camera Z">
+      </div>
+
+      <div class="camera-control">
+        <label for="cameraUpYRange">Traslazione camera Y</label>
+        <input id="cameraUpYRange" type="range" min="0" max="0.38" step="0.001" value="0">
+        <input id="cameraUpYNumber" type="number" min="0" max="0.38" step="0.001" value="0" inputmode="decimal" aria-label="Valore traslazione camera Y">
+      </div>
+
+      <div class="camera-control">
+        <label for="cameraAngleXRange">Angolazione camera X</label>
+        <input id="cameraAngleXRange" type="range" min="-45" max="45" step="1" value="0">
+        <input id="cameraAngleXNumber" type="number" min="-45" max="45" step="1" value="0" inputmode="decimal" aria-label="Valore angolazione camera X">
+      </div>
+
+      <div class="camera-control">
+        <label for="cameraZoomRange">Zoom obiettivo</label>
+        <input id="cameraZoomRange" type="range" min="0.5" max="2.5" step="0.01" value="1">
+        <input id="cameraZoomNumber" type="number" min="0.5" max="2.5" step="0.01" value="1" inputmode="decimal" aria-label="Valore zoom obiettivo">
+      </div>
+
+      <button id="closeCameraMenu" type="button">CHIUDI MENU</button>
+    </div>
+  </section>
 
   <section id="startScreen">
     <div class="start-card">
@@ -221,8 +367,21 @@
     const joystickKnob = document.getElementById("joystickKnob");
     const lookArea = document.getElementById("lookArea");
     const modificationCounter = document.getElementById("modificationCounter");
+
+    const thirdPersonButton = document.getElementById("thirdPersonButton");
+    const cameraMenu = document.getElementById("cameraMenu");
+    const closeCameraMenu = document.getElementById("closeCameraMenu");
+    const thirdPersonSwitch = document.getElementById("thirdPersonSwitch");
+    const cameraBackZRange = document.getElementById("cameraBackZRange");
+    const cameraBackZNumber = document.getElementById("cameraBackZNumber");
+    const cameraUpYRange = document.getElementById("cameraUpYRange");
+    const cameraUpYNumber = document.getElementById("cameraUpYNumber");
+    const cameraAngleXRange = document.getElementById("cameraAngleXRange");
+    const cameraAngleXNumber = document.getElementById("cameraAngleXNumber");
+    const cameraZoomRange = document.getElementById("cameraZoomRange");
+    const cameraZoomNumber = document.getElementById("cameraZoomNumber");
     // Revisione pubblicata: incrementare a ogni modifica del progetto.
-    const MODIFICATION_COUNT = 27;
+    const MODIFICATION_COUNT = 28;
     modificationCounter.textContent = String(MODIFICATION_COUNT);
 
     const scene = new THREE.Scene();
@@ -271,6 +430,8 @@
     const structureChunks = new Map();
     const buildingHitboxes = new Map();
     const flyerHitboxRadius = 0.38;
+    // Diametro della hitbox più un margine del 15% tra le torri.
+    const MIN_BUILDING_CLEARANCE = flyerHitboxRadius * 2 * 1.15;
     // DRONE_v1: distanza misurata tra le due punte estreme delle ali.
     const DRONE_V1_WINGTIP_DISTANCE = 13.5;
     const DRONE_V1_SCALE = (flyerHitboxRadius * 2) / DRONE_V1_WINGTIP_DISTANCE;
@@ -517,6 +678,26 @@
       return building;
     }
 
+
+    function hasBuildingClearance(candidateHitbox, localHitboxes) {
+      const overlapsWithClearance = hitbox => !(
+        candidateHitbox.max.x + MIN_BUILDING_CLEARANCE <= hitbox.min.x
+        || candidateHitbox.min.x - MIN_BUILDING_CLEARANCE >= hitbox.max.x
+        || candidateHitbox.max.z + MIN_BUILDING_CLEARANCE <= hitbox.min.z
+        || candidateHitbox.min.z - MIN_BUILDING_CLEARANCE >= hitbox.max.z
+      );
+
+      for (const hitboxes of buildingHitboxes.values()) {
+        for (const hitbox of hitboxes) {
+          if (overlapsWithClearance(hitbox)) return false;
+        }
+      }
+      for (const hitbox of localHitboxes) {
+        if (overlapsWithClearance(hitbox)) return false;
+      }
+      return true;
+    }
+
     function createStructuresChunk(chunkX, chunkZ) {
       const group = new THREE.Group();
       const chunkHitboxes = [];
@@ -559,6 +740,13 @@
           ) {
             continue;
           }
+
+          const baseY = heightAt(worldX, worldZ);
+          const candidateHitbox = new THREE.Box3(
+            new THREE.Vector3(worldX - width * 0.5, baseY, worldZ - depth * 0.5),
+            new THREE.Vector3(worldX + width * 0.5, baseY + 76, worldZ + depth * 0.5)
+          );
+          if (!hasBuildingClearance(candidateHitbox, chunkHitboxes)) continue;
 
           const building = createBuilding(
             worldX,
@@ -890,6 +1078,58 @@
     }
 
     startButton.addEventListener("click", beginGame);
+
+    const cameraSettings = {
+      thirdPerson: false,
+      backZ: 0,
+      upY: 0,
+      angleX: 0,
+      zoom: 1
+    };
+    const cameraRightAxis = new THREE.Vector3();
+
+    function setCameraZoom(value) {
+      cameraSettings.zoom = value;
+      camera.zoom = value;
+      camera.updateProjectionMatrix();
+    }
+
+    function bindCameraControl(rangeInput, numberInput, setting, onChange = null) {
+      const applyValue = rawValue => {
+        const min = Number(rangeInput.min);
+        const max = Number(rangeInput.max);
+        const numericValue = Number(rawValue);
+        const value = THREE.MathUtils.clamp(Number.isFinite(numericValue) ? numericValue : min, min, max);
+        cameraSettings[setting] = value;
+        rangeInput.value = String(value);
+        numberInput.value = String(value);
+        onChange?.(value);
+      };
+
+      rangeInput.addEventListener("input", () => applyValue(rangeInput.value));
+      numberInput.addEventListener("change", () => applyValue(numberInput.value));
+      applyValue(rangeInput.value);
+    }
+
+    function setCameraMenuOpen(isOpen) {
+      cameraMenu.classList.toggle("open", isOpen);
+      cameraMenu.setAttribute("aria-hidden", String(!isOpen));
+      if (isOpen && document.pointerLockElement === renderer.domElement) {
+        document.exitPointerLock?.();
+      }
+    }
+
+    bindCameraControl(cameraBackZRange, cameraBackZNumber, "backZ");
+    bindCameraControl(cameraUpYRange, cameraUpYNumber, "upY");
+    bindCameraControl(cameraAngleXRange, cameraAngleXNumber, "angleX");
+    bindCameraControl(cameraZoomRange, cameraZoomNumber, "zoom", setCameraZoom);
+
+    thirdPersonButton.addEventListener("click", () => setCameraMenuOpen(true));
+    closeCameraMenu.addEventListener("click", () => setCameraMenuOpen(false));
+    thirdPersonSwitch.addEventListener("change", () => {
+      cameraSettings.thirdPerson = thirdPersonSwitch.checked;
+    });
+
     renderer.domElement.addEventListener("click", () => {
       if (!started) {
         beginGame();
@@ -1223,10 +1463,19 @@
       updateProjectiles(delta);
 
       if (flyer) {
-        // Camera e modello condividono il player: la visuale parte dalla punta.
-        cameraPosition.set(0, 0, -DRONE_V1_FRONT_TIP_OFFSET).applyQuaternion(flyer.quaternion);
+        // In prima persona la visuale è alla punta; in 3P usa gli offset del menu.
+        const cameraBackZ = cameraSettings.thirdPerson ? cameraSettings.backZ : 0;
+        const cameraUpY = cameraSettings.thirdPerson ? cameraSettings.upY : 0;
+        cameraPosition.set(0, cameraUpY, -DRONE_V1_FRONT_TIP_OFFSET + cameraBackZ);
+        cameraPosition.applyQuaternion(flyer.quaternion);
         cameraPosition.add(flyer.position);
-        cameraLookTarget.copy(cameraPosition).addScaledVector(flightDirection, 1.4);
+
+        cameraRightAxis.set(1, 0, 0).applyQuaternion(flyer.quaternion);
+        cameraLookTarget.copy(flightDirection).applyAxisAngle(
+          cameraRightAxis,
+          cameraSettings.thirdPerson ? THREE.MathUtils.degToRad(cameraSettings.angleX) : 0
+        );
+        cameraLookTarget.multiplyScalar(1.4).add(cameraPosition);
         camera.position.copy(cameraPosition);
         camera.lookAt(cameraLookTarget);
       }

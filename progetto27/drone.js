@@ -12,15 +12,17 @@ const MOBILE_LAYOUT_QUERY = "(pointer: coarse) and (max-width: 900px)";
 // ============================================================================
 export const DRONE_SETTINGS = {
   // --- Dimensioni e modello 3D ---
-  modelUrl: "./DRONE_v2.glb?rev=49", // Percorso e versione cache del GLB usato dal player.
+  modelUrl: "./DRONE_v2.glb?rev=51", // Percorso e versione cache del GLB usato dal player.
   hitboxRadius: 0.38, // Raggio della sfera fisica del drone.
 
   // --- Movimento e limiti verticali ---
-  flightSpeed: 13, // Velocità in avanti quando si accelera.
+  flightSpeed: 30, // Velocità in avanti quando si accelera.//15
+  flightAcceleration: 50, // 60=0.5 Unità al secondo quadrato per raggiungere la velocità massima.
+  flightDeceleration: 40, // 75=0.4 Unità al secondo quadrato per rallentare quando si lascia l'acceleratore.
   spawnHeight: 110, // Quota iniziale sopra il terreno della città.
   groundClearance: 4.5, // Altezza minima consentita sopra il terreno.
   maxAltitude: 140, // Quota massima invisibile del drone.
-  pitchLimitRadians: 1.35, // Limite di salita/discesa; 1.35 radianti sono circa 77°.
+  pitchLimitRadians: 1.35, // CHIEDERE Limite di salita/discesa; 1.35 radianti sono circa 77°.
 
   // --- Sensibilità dei controlli ---
   pointerLockSensitivity: 0.0022, // Sensibilità del mouse con puntatore bloccato.
@@ -42,7 +44,7 @@ export const DRONE_SETTINGS = {
   crosshairScreenMargin: 16, // Margine minimo del mirino dai bordi dello schermo.
 
   // --- Rollio durante le virate ---
-  maxTurnBankDegrees: 50, // Rollio massimo sul proprio asse durante una virata forte.
+  maxTurnBankDegrees: 90, // Rollio massimo sul proprio asse durante una virata forte.
   bankInputPixelsForFullEffect: 45, // Gesto orizzontale necessario per arrivare al massimo.
   bankHoldSeconds: 0.14, // Tempo per cui il rollio resta sostenuto dopo il gesto.
   bankReturnSpeed: 5, // Velocità con cui l'input del rollio torna a zero.
@@ -52,24 +54,27 @@ export const DRONE_SETTINGS = {
   bankDirection: -1, // Usa -1 per il verso attuale; cambia in 1 per invertirlo.
 
   // --- Collisioni e rimbalzo ---
-  bounceVelocityDamping: 3.8, // Quanto rapidamente si esaurisce la spinta del rimbalzo.
-  bounceTiltDamping: 5.5, // Quanto rapidamente sparisce l'inclinazione da impatto.
-  bounceMinSpeed: 2.8, // Spinta minima ricevuta dopo un urto.
-  bounceMaxSpeed: 6.5, // Spinta massima ricevuta dopo un urto.
-  bounceEnergy: 0.72, // Percentuale della velocità d'impatto trasformata in rimbalzo.
-  collisionTiltMinDegrees: 3, // Inclinazione minima visiva causata da un urto.
-  collisionTiltExtraDegrees: 4, // Inclinazione aggiuntiva per gli urti più forti.
+  bounceVelocityDamping: 1, // Quanto rapidamente si esaurisce la spinta del rimbalzo.
+  bounceTiltDamping: 10, // Quanto rapidamente sparisce l'inclinazione da impatto.
+  bounceMinSpeed: 2, // Spinta minima ricevuta dopo un urto.
+  bounceMaxSpeed: 3, // Spinta massima ricevuta dopo un urto.
+  bounceEnergy: 0.10, // Percentuale della velocità d'impatto trasformata in rimbalzo.
+  maxPhysicsStep: 1 / 120, // Passo massimo della fisica per evitare attraversamenti ad alta velocità.
+  collisionTiltMinDegrees: 0.5, // Inclinazione minima visiva causata da un urto.
+  collisionTiltExtraDegrees: 1, // Inclinazione aggiuntiva per gli urti più forti.
 
   // --- Laser ---
-  laserColor: 0xffd45c, // Colore dei proiettili.
-  laserWidth: 0.14, // Larghezza visiva del laser.
-  laserLength: 1.6, // Lunghezza visiva del laser.
-  laserHitboxWidth: 0.22, // Larghezza della hitbox del laser.
-  laserSpeed: 42, // Velocità del proiettile.
-  laserLifetime: 2.2, // Secondi prima dello scaricamento automatico.
-  laserSpawnDistance: 1.35, // Distanza davanti al drone dove nasce il laser.
+  laserColor: 0xffffff, // Colore dei proiettili.
+  laserWidth: 0.01, // Larghezza visiva del laser.
+  laserLength: 1, // Lunghezza visiva del laser.
+  laserHitboxWidth: 0.04, // Larghezza della hitbox del laser.
+  laserSpeed: 80, // Velocità del proiettile.
+  laserLifetime: 1, // Secondi prima dello scaricamento automatico.
+  laserSpawnDistance: 0, // Distanza davanti al drone dove nasce il laser.
+  laserTipForwardOffset: 0.15, // Traslazione manuale in avanti dello spawn rispetto alle punte.
   laserSpawnHeight: 0.1, // Piccolo spostamento verticale del punto di sparo.
-  maxActiveLasers: 32, // Numero massimo di laser contemporanei.
+  laserDebugLogging: true, // Registra in console spawn e primo aggiornamento dei laser.
+  laserDebugLogLimit: 40, // Numero massimo di eventi registrati per sessione.
   mobileFireInterval: 0.18, // Intervallo della raffica mobile, in secondi.
   mobileFireThreshold: 0.5 // Distanza minima dello stick per iniziare a sparare.
 };
@@ -124,7 +129,7 @@ export class DroneController {
     this.lookPointer = null;
     this.lookStartX = 0;
     this.lookStartBankInput = 0;
-    this.mouseLookPointer = null;
+    this.desktopMouseLooking = false;
     this.desktopThrottleHeld = false;
     this.desktopFireHeld = false;
     this.previousLookX = 0;
@@ -134,6 +139,9 @@ export class DroneController {
     this.decorativeDronePlaced = false;
     this.droneBodyMeshes = [];
     this.droneBladeMeshes = [];
+    this.laserTipNodes = [];
+    this.laserDebugLogCount = 0;
+    this.updateFrame = 0;
     this.mobileLayout = matchMedia(MOBILE_LAYOUT_QUERY);
 
     this.cameraPosition = new THREE.Vector3();
@@ -154,6 +162,7 @@ export class DroneController {
     this.turnBank = 0;
 
     this.maxTurnBank = THREE.MathUtils.degToRad(DRONE_SETTINGS.maxTurnBankDegrees);
+    this.currentFlightSpeed = 0;
 
     this.camera.layers.enable(WORLD_LAYER);
     this.camera.layers.enable(DRONE_BLADES_LAYER);
@@ -178,8 +187,10 @@ export class DroneController {
       DRONE_SETTINGS.laserWidth,
       DRONE_SETTINGS.laserLength
     );
+    this.laserGeometry.translate(0, 0, DRONE_SETTINGS.laserLength * 0.5);
     this.laserMaterial = new THREE.MeshBasicMaterial({ color: DRONE_SETTINGS.laserColor });
     this.laserForward = new THREE.Vector3(0, 0, 1);
+    this.projectileHitboxCenter = new THREE.Vector3();
     this.laserHitboxSize = new THREE.Vector3(
       DRONE_SETTINGS.laserHitboxWidth,
       DRONE_SETTINGS.laserHitboxWidth,
@@ -199,6 +210,32 @@ export class DroneController {
     return this.thirdPersonEnabled;
   }
 
+  get hasDesktopMouseButtonHeld() {
+    return this.desktopThrottleHeld || this.desktopFireHeld;
+  }
+
+  /**
+   * Restituisce soltanto l'intenzione del giocatore per il futuro server.
+   * Posizione, collisioni, danni e proiettili dovranno invece essere calcolati
+   * dal server e ritornare al client in uno snapshot autorevole.
+   */
+  getMultiplayerInput() {
+    const joystickActive = this.joystickPointer !== null;
+    const joystickReverse = joystickActive
+      && this.mobileMove.y > DRONE_SETTINGS.mobileFireThreshold;
+    return {
+      throttle: joystickActive
+        ? !joystickReverse
+        : this.keys.has("w") || this.desktopThrottleHeld,
+      fire: this.desktopFireHeld || (
+        joystickActive && Math.abs(this.mobileMove.y) > DRONE_SETTINGS.mobileFireThreshold
+      ),
+      yaw: this.yaw,
+      pitch: this.pitch,
+      bank: this.bankTurnInput
+    };
+  }
+
   loadModel() {
     const loader = new GLTFLoader();
     loader.load(
@@ -207,6 +244,12 @@ export class DroneController {
         const droneModel = gltf.scene;
         const bodyNode = droneModel.getObjectByName("DRONE_BODY");
         const bladesNode = droneModel.getObjectByName("DRONE_BLADES");
+        this.laserTipNodes = [
+          "LASER_TIP_01",
+          "LASER_TIP_02",
+          "LASER_TIP_03",
+          "LASER_TIP_04"
+        ].map(name => droneModel.getObjectByName(name)).filter(Boolean);
         droneModel.traverse(object => {
           if (!object.isMesh) return;
           object.castShadow = true;
@@ -309,82 +352,60 @@ export class DroneController {
       if (event.key.toLowerCase() === "w") this.keys.delete("w");
     });
     addEventListener("mousemove", event => {
-      if (document.pointerLockElement !== this.renderer.domElement || !this.started) return;
-      this.registerTurnBankInput(event.movementX);
-      this.yaw -= event.movementX * DRONE_SETTINGS.pointerLockSensitivity;
-      this.pitch -= event.movementY * DRONE_SETTINGS.pointerLockSensitivity;
+      if (!this.started) return;
+      const pointerLocked = document.pointerLockElement === this.renderer.domElement;
+      if (
+        !pointerLocked
+        && (!this.desktopMouseLooking || !matchMedia("(pointer: fine)").matches)
+      ) return;
+      const lookDeltaX = pointerLocked
+        ? event.movementX
+        : event.clientX - this.previousLookX;
+      const lookDeltaY = pointerLocked
+        ? event.movementY
+        : event.clientY - this.previousLookY;
+      this.registerTurnBankInput(lookDeltaX);
+      const sensitivity = pointerLocked
+        ? DRONE_SETTINGS.pointerLockSensitivity
+        : DRONE_SETTINGS.mouseDragSensitivity;
+      this.yaw -= lookDeltaX * sensitivity;
+      this.pitch -= lookDeltaY * sensitivity;
       this.pitch = THREE.MathUtils.clamp(
         this.pitch,
         -DRONE_SETTINGS.pitchLimitRadians,
         DRONE_SETTINGS.pitchLimitRadians
       );
+      this.previousLookX = event.clientX;
+      this.previousLookY = event.clientY;
     });
 
-    const syncDesktopMouseButtons = buttons => {
-      this.desktopFireHeld = (buttons & 1) !== 0;
-      this.desktopThrottleHeld = (buttons & 2) !== 0;
+    const setDesktopMouseButton = (button, held) => {
+      if (button === 0) this.desktopFireHeld = held;
+      if (button === 2) this.desktopThrottleHeld = held;
     };
     const resetDesktopMouseButtons = () => {
       this.desktopFireHeld = false;
       this.desktopThrottleHeld = false;
-      this.mouseLookPointer = null;
+      this.desktopMouseLooking = false;
     };
 
-    this.renderer.domElement.addEventListener("pointerdown", event => {
+    // Sul desktop usiamo gli eventi mouse: Firefox emette mousedown/mouseup per
+    // ogni tasto della combinazione, mentre pointerdown/pointerup condividono
+    // una sola cattura che può interrompere la virata con destro + sinistro.
+    this.renderer.domElement.addEventListener("mousedown", event => {
       if (!this.started || !matchMedia("(pointer: fine)").matches) return;
       if (event.button !== 0 && event.button !== 2) return;
       if (event.button === 2) event.preventDefault();
-      syncDesktopMouseButtons(event.buttons);
-      if (event.button === 0) {
-        this.shootProjectile();
-        this.shotCooldown = DRONE_SETTINGS.mobileFireInterval;
-      }
-      this.mouseLookPointer = event.pointerId;
-      this.previousLookX = event.clientX;
-      this.previousLookY = event.clientY;
-      if (!this.renderer.domElement.hasPointerCapture?.(event.pointerId)) {
-        this.renderer.domElement.setPointerCapture(event.pointerId);
-      }
-    });
-    this.renderer.domElement.addEventListener("pointermove", event => {
-      if (this.started && matchMedia("(pointer: fine)").matches) {
-        syncDesktopMouseButtons(event.buttons);
-      }
-      if (
-        !this.started
-        || event.pointerId !== this.mouseLookPointer
-        || document.pointerLockElement === this.renderer.domElement
-      ) return;
-      const lookDeltaX = event.clientX - this.previousLookX;
-      const lookDeltaY = event.clientY - this.previousLookY;
-      this.registerTurnBankInput(lookDeltaX);
-      this.yaw -= lookDeltaX * DRONE_SETTINGS.mouseDragSensitivity;
-      this.pitch -= lookDeltaY * DRONE_SETTINGS.mouseDragSensitivity;
-      this.pitch = THREE.MathUtils.clamp(
-        this.pitch,
-        -DRONE_SETTINGS.pitchLimitRadians,
-        DRONE_SETTINGS.pitchLimitRadians
-      );
+      setDesktopMouseButton(event.button, true);
+      this.desktopMouseLooking = true;
       this.previousLookX = event.clientX;
       this.previousLookY = event.clientY;
     });
-    const stopMouseLooking = event => {
-      if (event.type === "pointercancel") {
-        resetDesktopMouseButtons();
-      } else {
-        syncDesktopMouseButtons(event.buttons);
-      }
-      if (event.pointerId !== this.mouseLookPointer) return;
-      if (this.desktopThrottleHeld || this.desktopFireHeld) return;
-      this.mouseLookPointer = null;
-      if (this.renderer.domElement.hasPointerCapture?.(event.pointerId)) {
-        this.renderer.domElement.releasePointerCapture(event.pointerId);
-      }
-    };
-    this.renderer.domElement.addEventListener("pointerup", stopMouseLooking);
-    this.renderer.domElement.addEventListener("pointercancel", stopMouseLooking);
     this.renderer.domElement.addEventListener("contextmenu", event => event.preventDefault());
-    addEventListener("mouseup", event => syncDesktopMouseButtons(event.buttons));
+    addEventListener("mouseup", event => {
+      setDesktopMouseButton(event.button, false);
+      if (!this.hasDesktopMouseButtonHeld) this.desktopMouseLooking = false;
+    });
     addEventListener("blur", resetDesktopMouseButtons);
 
     this.joystick.addEventListener("pointerdown", event => {
@@ -478,32 +499,89 @@ export class DroneController {
     this.laserPool.push(mesh);
   }
 
+  logLaserDebug(label, data) {
+    if (!DRONE_SETTINGS.laserDebugLogging) return;
+    if (this.laserDebugLogCount >= DRONE_SETTINGS.laserDebugLogLimit) return;
+    this.laserDebugLogCount++;
+    console.groupCollapsed(`[laser-debug #${this.laserDebugLogCount}] ${label}`);
+    console.table(data);
+    console.groupEnd();
+  }
+
   shootProjectile() {
-    if (this.projectiles.length >= DRONE_SETTINGS.maxActiveLasers) return;
-    const shot = this.acquireLaser();
-    shot.position.copy(this.flyer.position).addScaledVector(
+    const tipNodes = this.laserTipNodes.length > 0 ? this.laserTipNodes : [null];
+    const convergencePoint = this.flyer.position.clone().addScaledVector(
       this.flightDirection,
-      DRONE_SETTINGS.laserSpawnDistance
+      DRONE_SETTINGS.crosshairAimDistance
     );
-    shot.position.y += DRONE_SETTINGS.laserSpawnHeight;
-    shot.quaternion.setFromUnitVectors(this.laserForward, this.flightDirection);
-    this.projectiles.push({
-      mesh: shot,
-      velocity: this.flightDirection.clone().multiplyScalar(DRONE_SETTINGS.laserSpeed),
-      life: DRONE_SETTINGS.laserLifetime,
-      hitbox: new THREE.Box3()
-    });
+    for (let index = 0; index < tipNodes.length; index++) {
+      const tipNode = tipNodes[index];
+      const start = new THREE.Vector3();
+      if (tipNode) {
+        tipNode.getWorldPosition(start);
+      } else {
+        start.copy(this.flyer.position).addScaledVector(
+          this.flightDirection,
+          DRONE_SETTINGS.laserSpawnDistance
+        );
+        start.y += DRONE_SETTINGS.laserSpawnHeight;
+      }
+      const direction = convergencePoint.clone().sub(start).normalize();
+      start.addScaledVector(direction, DRONE_SETTINGS.laserTipForwardOffset);
+      this.logLaserDebug("spawn", {
+        frame: this.updateFrame,
+        tip: tipNode?.name ?? "fallback",
+        start: start.toArray().map(value => Number(value.toFixed(4))),
+        flyer: this.flyer.position.toArray().map(value => Number(value.toFixed(4))),
+        camera: this.camera.position.toArray().map(value => Number(value.toFixed(4))),
+        markerDistanceFromFlyer: tipNode
+          ? start.distanceTo(this.flyer.position).toFixed(4)
+          : "fallback",
+        markerDistanceFromCamera: tipNode
+          ? start.distanceTo(this.camera.position).toFixed(4)
+          : "fallback",
+        laserTipForwardOffset: DRONE_SETTINGS.laserTipForwardOffset,
+        throttle: Number((this.movementVelocity.length() / Math.max(1, DRONE_SETTINGS.flightSpeed)).toFixed(3))
+      });
+      const shot = this.acquireLaser();
+      shot.position.copy(start);
+      shot.quaternion.setFromUnitVectors(this.laserForward, direction);
+      this.projectiles.push({
+        mesh: shot,
+        direction: direction.clone(),
+        velocity: direction.multiplyScalar(DRONE_SETTINGS.laserSpeed),
+        life: DRONE_SETTINGS.laserLifetime,
+        debugLogged: false,
+        hitbox: new THREE.Box3()
+      });
+    }
   }
 
   updateProjectiles(delta) {
     for (let index = this.projectiles.length - 1; index >= 0; index--) {
       const projectile = this.projectiles[index];
       projectile.life -= delta;
+      const beforeMove = projectile.mesh.position.clone();
       projectile.mesh.position.addScaledVector(projectile.velocity, delta);
-      projectile.hitbox.setFromCenterAndSize(projectile.mesh.position, this.laserHitboxSize);
+      if (!projectile.debugLogged) {
+        projectile.debugLogged = true;
+        this.logLaserDebug("primo aggiornamento", {
+          frame: this.updateFrame,
+          before: beforeMove.toArray().map(value => Number(value.toFixed(4))),
+          after: projectile.mesh.position.toArray().map(value => Number(value.toFixed(4))),
+          delta: Number(delta.toFixed(5)),
+          speed: Number(projectile.velocity.length().toFixed(3)),
+          moved: Number(beforeMove.distanceTo(projectile.mesh.position).toFixed(4)),
+          distanceFromFlyer: Number(projectile.mesh.position.distanceTo(this.flyer.position).toFixed(4))
+        });
+      }
+      this.projectileHitboxCenter
+        .copy(projectile.mesh.position)
+        .addScaledVector(projectile.direction, DRONE_SETTINGS.laserLength * 0.5);
+      projectile.hitbox.setFromCenterAndSize(this.projectileHitboxCenter, this.laserHitboxSize);
       const hitBuilding = this.terrain.projectileHitsBuilding(
         projectile.hitbox,
-        projectile.mesh.position
+        this.projectileHitboxCenter
       );
       if (projectile.life <= 0 || hitBuilding) {
         this.releaseLaser(projectile.mesh);
@@ -528,76 +606,86 @@ export class DroneController {
     if (this.joystickPointer !== null) throttle = joystickReverse ? 0 : 1;
 
     this.shotCooldown = Math.max(0, this.shotCooldown - delta);
-    if ((stickShooting || desktopShooting) && this.shotCooldown <= 0) {
-      this.shootProjectile();
-      this.shotCooldown = DRONE_SETTINGS.mobileFireInterval;
-    }
+    const shouldShoot = (stickShooting || desktopShooting) && this.shotCooldown <= 0;
 
     this.flightDirection.set(
       -Math.sin(this.yaw) * Math.cos(this.pitch),
       Math.sin(this.pitch),
       -Math.cos(this.yaw) * Math.cos(this.pitch)
     );
-    this.movementVelocity.copy(this.flightDirection).multiplyScalar(
-      DRONE_SETTINGS.flightSpeed * throttle
-    );
-    this.flyer.position.addScaledVector(this.movementVelocity, delta);
-    this.flyer.position.addScaledVector(this.bounceVelocity, delta);
-    this.bounceVelocity.multiplyScalar(Math.exp(-DRONE_SETTINGS.bounceVelocityDamping * delta));
-    this.bounceTilt.multiplyScalar(Math.exp(-DRONE_SETTINGS.bounceTiltDamping * delta));
+    const targetFlightSpeed = DRONE_SETTINGS.flightSpeed * throttle;
+    const speedChange = (targetFlightSpeed > this.currentFlightSpeed
+      ? DRONE_SETTINGS.flightAcceleration
+      : DRONE_SETTINGS.flightDeceleration) * delta;
+    this.currentFlightSpeed = targetFlightSpeed > this.currentFlightSpeed
+      ? Math.min(targetFlightSpeed, this.currentFlightSpeed + speedChange)
+      : Math.max(targetFlightSpeed, this.currentFlightSpeed - speedChange);
+    this.movementVelocity.copy(this.flightDirection).multiplyScalar(this.currentFlightSpeed);
+    const physicsSteps = Math.max(1, Math.ceil(delta / DRONE_SETTINGS.maxPhysicsStep));
+    const physicsDelta = delta / physicsSteps;
+    let verticalLimitHit = false;
+    for (let step = 0; step < physicsSteps; step++) {
+      this.flyer.position.addScaledVector(this.movementVelocity, physicsDelta);
+      this.flyer.position.addScaledVector(this.bounceVelocity, physicsDelta);
+      this.bounceVelocity.multiplyScalar(Math.exp(-DRONE_SETTINGS.bounceVelocityDamping * physicsDelta));
+      this.bounceTilt.multiplyScalar(Math.exp(-DRONE_SETTINGS.bounceTiltDamping * physicsDelta));
 
-    const groundHeight = this.terrain.heightAt(this.flyer.position.x, this.flyer.position.z);
-    this.flyer.position.y = THREE.MathUtils.clamp(
-      this.flyer.position.y,
-      groundHeight + DRONE_SETTINGS.groundClearance,
-      DRONE_SETTINGS.maxAltitude
-    );
-    this.terrain.enforceWorldBoundary(
-      this.flyer.position,
-      this.bounceVelocity,
-      DRONE_SETTINGS.hitboxRadius
-    );
-    this.terrain.syncAround(this.flyer.position);
-    this.updateHitbox();
-
-    const collision = this.terrain.findBuildingCollision(
-      this.flyer.userData.hitbox,
-      this.flyer.position
-    );
-    if (collision) {
-      this.flyer.position.addScaledVector(collision.normal, collision.penetration + 0.001);
-      const incomingVelocity = this.movementVelocity.clone().add(this.bounceVelocity);
-      const impactSpeed = Math.max(0, -incomingVelocity.dot(collision.normal));
-      const reboundSpeed = Math.min(
-        DRONE_SETTINGS.bounceMaxSpeed,
-        Math.max(DRONE_SETTINGS.bounceMinSpeed, impactSpeed * DRONE_SETTINGS.bounceEnergy)
+      const groundHeight = this.terrain.heightAt(this.flyer.position.x, this.flyer.position.z);
+      const unclampedY = this.flyer.position.y;
+      const clampedY = THREE.MathUtils.clamp(
+        this.flyer.position.y,
+        groundHeight + DRONE_SETTINGS.groundClearance,
+        DRONE_SETTINGS.maxAltitude
       );
-      this.bounceVelocity.copy(collision.normal).multiplyScalar(reboundSpeed);
-      this.flyer.position.addScaledVector(this.bounceVelocity, delta);
-
-      this.localNormalScratch.copy(collision.normal).applyAxisAngle(this.upAxis, -this.yaw);
-      const normalizedImpact = THREE.MathUtils.clamp(
-        impactSpeed / Math.max(1, this.movementVelocity.length()),
-        0,
-        1
+      verticalLimitHit ||= Math.abs(clampedY - unclampedY) > 0.000001;
+      this.flyer.position.y = clampedY;
+      this.terrain.enforceWorldBoundary(
+        this.flyer.position,
+        this.bounceVelocity,
+        DRONE_SETTINGS.hitboxRadius
       );
-      const tilt = THREE.MathUtils.degToRad(
-        DRONE_SETTINGS.collisionTiltMinDegrees
-        + normalizedImpact * DRONE_SETTINGS.collisionTiltExtraDegrees
-      );
-      const verticalRatio = THREE.MathUtils.clamp(
-        Math.abs(this.movementVelocity.y) / Math.max(1, this.movementVelocity.length()),
-        0,
-        1
-      );
-      this.bounceTilt.y = THREE.MathUtils.clamp(this.localNormalScratch.x * tilt, -tilt, tilt);
-      this.bounceTilt.x = -Math.sign(this.movementVelocity.y) * tilt * verticalRatio;
+      this.terrain.syncAround(this.flyer.position);
       this.updateHitbox();
+
+      const collision = this.terrain.findBuildingCollision(
+        this.flyer.userData.hitbox,
+        this.flyer.position
+      );
+      if (collision) {
+        this.flyer.position.addScaledVector(collision.normal, collision.penetration + 0.001);
+        const incomingVelocity = this.movementVelocity.clone().add(this.bounceVelocity);
+        const impactSpeed = Math.max(0, -incomingVelocity.dot(collision.normal));
+        const reboundSpeed = Math.min(
+          DRONE_SETTINGS.bounceMaxSpeed,
+          Math.max(DRONE_SETTINGS.bounceMinSpeed, impactSpeed * DRONE_SETTINGS.bounceEnergy)
+        );
+        this.bounceVelocity.copy(collision.normal).multiplyScalar(reboundSpeed);
+        this.flyer.position.addScaledVector(this.bounceVelocity, physicsDelta);
+
+        this.localNormalScratch.copy(collision.normal).applyAxisAngle(this.upAxis, -this.yaw);
+        const normalizedImpact = THREE.MathUtils.clamp(
+          impactSpeed / Math.max(1, this.movementVelocity.length()),
+          0,
+          1
+        );
+        const tilt = THREE.MathUtils.degToRad(
+          DRONE_SETTINGS.collisionTiltMinDegrees
+          + normalizedImpact * DRONE_SETTINGS.collisionTiltExtraDegrees
+        );
+        const verticalRatio = THREE.MathUtils.clamp(
+          Math.abs(this.movementVelocity.y) / Math.max(1, this.movementVelocity.length()),
+          0,
+          1
+        );
+        this.bounceTilt.y = THREE.MathUtils.clamp(this.localNormalScratch.x * tilt, -tilt, tilt);
+        this.bounceTilt.x = -Math.sign(this.movementVelocity.y) * tilt * verticalRatio;
+        this.updateHitbox();
+      }
     }
 
     this.actualMovement.copy(this.flyer.position).sub(this.frameStartPosition);
     let targetVisualPitch = this.pitch;
-    if (throttle > 0 && this.actualMovement.lengthSq() > 0.000001) {
+    if (!verticalLimitHit && throttle > 0 && this.actualMovement.lengthSq() > 0.000001) {
       targetVisualPitch = Math.atan2(
         this.actualMovement.y,
         Math.hypot(this.actualMovement.x, this.actualMovement.z)
@@ -645,6 +733,13 @@ export class DroneController {
       0,
       this.turnBank
     );
+
+    // Lo spawn avviene dopo fisica e assetto: marker e drone appartengono allo
+    // stesso stato che verrà renderizzato in questo frame.
+    if (shouldShoot) {
+      this.shootProjectile();
+      this.shotCooldown = DRONE_SETTINGS.mobileFireInterval;
+    }
   }
 
   updateCameraAndCrosshair() {
@@ -661,7 +756,9 @@ export class DroneController {
       this.camera.updateProjectionMatrix();
     }
     if (this.thirdPersonEnabled) {
-      this.cameraFlatForward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+      // In terza persona la camera resta dietro alla direzione reale di volo,
+      // quindi accompagna anche il pitch quando il drone sale o scende.
+      this.cameraFlatForward.copy(this.flightDirection);
       this.cameraPosition.copy(this.flyer.position);
       this.cameraPosition.addScaledVector(
         this.cameraFlatForward,
@@ -706,8 +803,9 @@ export class DroneController {
 
   /** Aggiorna movimento, proiettili e camera una volta per frame. */
   update(delta) {
-    this.move(delta);
+    this.updateFrame++;
     this.updateProjectiles(delta);
+    this.move(delta);
     this.updateCameraAndCrosshair();
   }
 }

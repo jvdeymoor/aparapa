@@ -204,7 +204,7 @@
   <div id="game" aria-label="Mondo 3D giocabile"></div>
 
   <div class="hud" aria-hidden="true">
-    <p id="modificationCounter" class="counter">58</p>
+    <p id="modificationCounter" class="counter">60</p>
     <div class="crosshair"></div>
   </div>
 
@@ -235,7 +235,8 @@
 
     <script type="module">
     import * as THREE from "three";
-    import { DroneController, DRONE_SETTINGS } from "./drone.js?rev=58";
+    import { DroneController, DRONE_SETTINGS } from "./drone.js?rev=65";
+    import { MultiplayerClient } from "./multiplayer.js?rev=1";
     import { TerrainWorld } from "./terrain.js";
 
     // ==========================================================================
@@ -255,7 +256,18 @@
       sunIntensity: 3.2 // Intensità della luce direzionale principale.
     };
 
-    const REVISION_COUNT = 58;
+    // ========================================================================
+    // CERCA: SETTAGGI MULTIPLAYER
+    // GitHub Pages ospita il client. Inserire l'endpoint wss:// del servizio
+    // Node.js e attivare enabled solo quando il server implementa il protocollo.
+    // ========================================================================
+    const MULTIPLAYER_SETTINGS = {
+      enabled: false,
+      serverUrl: "",
+      inputRate: 20
+    };
+
+    const REVISION_COUNT = 88;
     const game = document.getElementById("game");
     const startScreen = document.getElementById("startScreen");
     const startButton = document.getElementById("startButton");
@@ -347,10 +359,21 @@
     terrain.syncAround(camera.position);
 
     let drone;
+    const multiplayer = new MultiplayerClient({
+      ...MULTIPLAYER_SETTINGS,
+      onSnapshot: snapshot => {
+        // Punto di integrazione per player, nemici e proiettili server-authoritative.
+        // Finché non esiste il server, gli snapshot non alterano la simulazione locale.
+      },
+      onStatus: () => {
+        // Nessun indicatore HUD finché non verrà richiesto.
+      }
+    });
     function beginGame() {
       if (drone.isStarted) return;
       startScreen.classList.add("hidden");
       drone.start();
+      multiplayer.connect();
       drone.requestPointerLockSafely();
     }
 
@@ -378,7 +401,7 @@
     });
     renderer.domElement.addEventListener("click", () => {
       if (!drone.isStarted) beginGame();
-      else drone.requestPointerLockSafely();
+      else if (!drone.hasDesktopMouseButtonHeld) drone.requestPointerLockSafely();
     });
     updateThirdPersonButton();
 
@@ -387,6 +410,7 @@
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.05);
       drone.update(delta);
+      multiplayer.update(delta, drone.getMultiplayerInput());
       renderer.render(scene, camera);
     }
 
@@ -396,6 +420,7 @@
       renderer.setPixelRatio(Math.min(devicePixelRatio, SCENE_SETTINGS.maxPixelRatio));
       renderer.setSize(innerWidth, innerHeight);
     });
+    addEventListener("pagehide", () => multiplayer.disconnect());
 
     animate();
   </script>

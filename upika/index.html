@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>UPIKA</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="hud">
+      <div><div class="brand">UPIKA</div><div id="mode">ENDLESS</div></div>
+      <div class="score-box"><div class="score-label">ALTITUDE <span id="score">0</span> m</div><div class="secondary">BEST <span id="best">0</span> m · <span id="time">00:00</span></div></div>
+    </div>
+
+    <div id="biome">BASE</div>
+    <div id="event-status" class="hidden"><span id="event-name"></span><span id="event-time"></span></div>
+    <div id="banner"></div>
+    <button id="daily" class="daily">DAILY TOWER</button>
+    <button id="pause" class="pause">PAUSE</button>
+
+    <div id="audio-panel" class="audio-panel hidden" aria-label="Regolazioni audio">
+      <div class="audio-panel-title">AUDIO DEBUG</div>
+      <label>MUSIC <output id="music-value">0.35</output><input id="music-volume" type="range" min="0" max="100" value="35"></label>
+      <label>JUMP <output id="jump-value">0.55</output><input id="jump-volume" type="range" min="0" max="100" value="55"></label>
+      <label>BOUNCE <output id="bounce-value">0.50</output><input id="bounce-volume" type="range" min="0" max="100" value="50"></label>
+      <p>Modifica i mix dei biomi in main.js.</p>
+    </div>
+
+    <div id="start-screen" class="panel">
+      <p class="eyebrow">INFINITE ASCENT</p>
+      <h1>UPIKA</h1>
+      <button id="play">PLAY</button>
+      <picture id="controls-guide">
+        <source media="(pointer: coarse)" srcset="2.png">
+        <img src="1.png" alt="Controlli: muovi la pallina lateralmente e salta">
+      </picture>
+    </div>
+
+    <div id="game-over" class="panel hidden">
+      <p class="eyebrow">PARTITA TERMINATA</p>
+      <h1 id="final-score">0 m</h1>
+      <p id="final-best">BEST: 0 m</p>
+      <p id="final-time">TIME: 00:00</p>
+      <button id="restart">RICOMINCIA</button>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

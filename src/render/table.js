@@ -6,7 +6,7 @@ export class TableRenderer {
     this.el = element;
     this.C = config;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#1b427e');
+    this.scene.background = new THREE.Color('#245fa8');
     this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
     this.target = new THREE.Vector3(0, 0, 0);
     this.camera.position.set(0, 13, 11);
@@ -14,9 +14,12 @@ export class TableRenderer {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.append(this.renderer.domElement);
-    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: '#3979c9' }));
+    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: '#62a6f5' }));
     table.position.y = -0.25;
     this.scene.add(table);
+    const grid = new THREE.GridHelper(config.TABLE.WIDTH - 0.5, 12, 0xd9f4ff, 0x316bb4);
+    grid.position.y = -0.06;
+    this.scene.add(grid);
     this.installTouchControls();
     this.group = new THREE.Group();
     this.scene.add(this.group);
@@ -34,32 +37,33 @@ export class TableRenderer {
     this.renderer.setSize(width, height);
   }
   installTouchControls() {
-    const canvas = this.renderer.domElement;
-    canvas.style.touchAction = 'none';
+    const canvas = this.renderer.domElement, pointers = new Map();
     let start = null;
-    const point = touch => new THREE.Vector2(touch.clientX, touch.clientY);
-    canvas.addEventListener('touchstart', event => {
-      const touches = [...event.touches].map(point);
-      start = { touches, zoom: this.camera.zoom, target: this.target.clone() };
-    }, { passive: true });
-    canvas.addEventListener('touchmove', event => {
-      if (!start) return;
-      event.preventDefault();
-      const touches = [...event.touches].map(point);
-      if (touches.length === 2 && start.touches.length === 2) {
-        const oldDistance = start.touches[0].distanceTo(start.touches[1]);
-        const newDistance = touches[0].distanceTo(touches[1]);
-        this.camera.zoom = THREE.MathUtils.clamp(start.zoom * (newDistance / oldDistance), 0.7, 2.4);
+    canvas.style.touchAction = 'none';
+    const snapshot = () => [...pointers.values()].map(p => new THREE.Vector2(p.x, p.y));
+    canvas.addEventListener('pointerdown', event => {
+      canvas.setPointerCapture(event.pointerId);
+      pointers.set(event.pointerId, event);
+      start = { points: snapshot(), zoom: this.camera.zoom, target: this.target.clone() };
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (!pointers.has(event.pointerId) || !start) return;
+      pointers.set(event.pointerId, event);
+      const points = snapshot();
+      if (points.length === 2 && start.points.length === 2) {
+        const before = start.points[0].distanceTo(start.points[1]), now = points[0].distanceTo(points[1]);
+        this.camera.zoom = THREE.MathUtils.clamp(start.zoom * now / before, 0.7, 2.4);
         this.camera.updateProjectionMatrix();
-      } else if (touches.length === 1 && start.touches.length === 1) {
-        const delta = touches[0].clone().sub(start.touches[0]);
-        const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
+      } else if (points.length === 1 && start.points.length === 1) {
+        const delta = points[0].clone().sub(start.points[0]), scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
         this.target.set(start.target.x - delta.x * scale, 0, start.target.z + delta.y * scale);
         this.camera.position.set(this.target.x, 13, this.target.z + 11);
         this.camera.lookAt(this.target);
       }
-    }, { passive: false });
-    canvas.addEventListener('touchend', () => { start = null; }, { passive: true });
+    });
+    const finish = event => { pointers.delete(event.pointerId); start = pointers.size ? { points: snapshot(), zoom: this.camera.zoom, target: this.target.clone() } : null; };
+    canvas.addEventListener('pointerup', finish);
+    canvas.addEventListener('pointercancel', finish);
   }
   update(state) {
     this.group.clear();

@@ -1,29 +1,29 @@
 import * as THREE from '../../vendor/three.module.min.js';
 
-// Arena tattica: ortografica per mantenere i due lati simmetrici su ogni schermo.
+// Scena volutamente minimale: nessuna luce, ombra, foschia o effetto.
 export class TableRenderer {
   constructor(element, config) {
     this.el = element;
-    this.C = config;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#245fa8');
-    this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
+    this.scene.background = new THREE.Color(0x182234);
     this.target = new THREE.Vector3(0, 0, 0);
-    this.camera.position.set(0, 13, 11);
+    this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
+    this.camera.position.set(0, 18, 0.01);
     this.camera.lookAt(this.target);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.append(this.renderer.domElement);
-    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: 0x65b7ff, side: THREE.DoubleSide }));
-    table.position.y = -0.25;
-    this.scene.add(table);
-    const grid = new THREE.GridHelper(config.TABLE.WIDTH - 0.5, 12, 0xd9f4ff, 0x316bb4);
-    grid.position.y = -0.06;
-    this.scene.add(grid);
-    this.installTouchControls();
-    this.group = new THREE.Group();
-    this.scene.add(this.group);
+
+    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshBasicMaterial({ color: 0xdde8f5 }));
+    field.rotation.x = -Math.PI / 2;
+    this.scene.add(field);
+    const border = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(13.8, 7.8)), new THREE.LineBasicMaterial({ color: 0x27466d }));
+    border.rotation.x = -Math.PI / 2;
+    border.position.y = 0.01;
+    this.scene.add(border);
+    this.units = new THREE.Group();
+    this.scene.add(this.units);
+    this.installPointerControls();
     addEventListener('resize', () => this.resize());
     this.resize();
     this.tick();
@@ -37,47 +37,33 @@ export class TableRenderer {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
-  installTouchControls() {
-    const canvas = this.renderer.domElement, pointers = new Map();
-    let start = null;
+  installPointerControls() {
+    const canvas = this.renderer.domElement;
     canvas.style.touchAction = 'none';
-    const snapshot = () => [...pointers.values()].map(p => new THREE.Vector2(p.x, p.y));
-    canvas.addEventListener('pointerdown', event => {
-      canvas.setPointerCapture(event.pointerId);
-      pointers.set(event.pointerId, event);
-      start = { points: snapshot(), zoom: this.camera.zoom, target: this.target.clone() };
-    });
+    let origin = null;
+    canvas.addEventListener('pointerdown', event => { origin = { x: event.clientX, y: event.clientY, target: this.target.clone() }; canvas.setPointerCapture(event.pointerId); });
     canvas.addEventListener('pointermove', event => {
-      if (!pointers.has(event.pointerId) || !start) return;
-      pointers.set(event.pointerId, event);
-      const points = snapshot();
-      if (points.length === 2 && start.points.length === 2) {
-        const before = start.points[0].distanceTo(start.points[1]), now = points[0].distanceTo(points[1]);
-        this.camera.zoom = THREE.MathUtils.clamp(start.zoom * now / before, 0.7, 2.4);
-        this.camera.updateProjectionMatrix();
-      } else if (points.length === 1 && start.points.length === 1) {
-        const delta = points[0].clone().sub(start.points[0]), scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
-        this.target.set(start.target.x - delta.x * scale, 0, start.target.z + delta.y * scale);
-        this.camera.position.set(this.target.x, 13, this.target.z + 11);
-        this.camera.lookAt(this.target);
-      }
+      if (!origin || !canvas.hasPointerCapture(event.pointerId)) return;
+      const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
+      this.target.set(origin.target.x - (event.clientX - origin.x) * scale, 0, origin.target.z + (event.clientY - origin.y) * scale);
+      this.camera.position.set(this.target.x, 18, this.target.z + 0.01);
+      this.camera.lookAt(this.target);
     });
-    const finish = event => { pointers.delete(event.pointerId); start = pointers.size ? { points: snapshot(), zoom: this.camera.zoom, target: this.target.clone() } : null; };
-    canvas.addEventListener('pointerup', finish);
-    canvas.addEventListener('pointercancel', finish);
+    canvas.addEventListener('pointerup', () => { origin = null; });
   }
   update(state) {
-    this.group.clear();
-    const add = (x, z, color, scale = 1) => {
-      const unit = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * scale, 0.55 * scale, 0.18, 6), new THREE.MeshBasicMaterial({ color }));
-      unit.position.set(x, 0, z);
-      this.group.add(unit);
+    this.units.clear();
+    const marker = (x, z, color, size = 0.55) => {
+      const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshBasicMaterial({ color }));
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(x, 0.03, z);
+      this.units.add(mesh);
     };
     state.players.forEach((player, index) => {
-      const side = index ? 2.7 : -2.7;
-      add(side, 0, index ? 0xff354c : 0x37e9ff, 1.4);
-      player.drones.forEach((drone, number) => add(side + (index ? -0.8 : 0.8), -0.9 + number * 0.7, 0xf6c84b, 0.55));
-      player.shields.forEach((shield, number) => add(side + (index ? -0.7 : 0.7), 0.9 - number * 0.55, 0x54d6ff, 0.4));
+      const side = index ? 2.8 : -2.8;
+      marker(side, 0, index ? 0xe3485c : 0x238fc3, 0.8);
+      player.drones.forEach((drone, number) => marker(side + (index ? -0.9 : 0.9), -1.3 + number * 0.75, 0x7c8797, 0.28));
+      player.shields.forEach((shield, number) => marker(side + (index ? -0.8 : 0.8), 1.3 - number * 0.62, 0x5c9ed0, 0.22));
     });
   }
   tick() { requestAnimationFrame(() => this.tick()); this.renderer.render(this.scene, this.camera); }

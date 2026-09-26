@@ -113,13 +113,13 @@ export class TableRenderer {
       mesh.castShadow = true;
       this.units.add(mesh);
     };
-    const shieldPlate = (coreX, index, total) => {
+    const shieldPlate = (coreX, direction, index, total) => {
       // Faccia quasi pari allo sprite precedente, ma con uno spessore molto ridotto.
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.36), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.48 }));
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.units.add(mesh);
-      this.orbiters.push({ mesh, coreX, phase: (index / Math.max(1, total)) * Math.PI * 2 });
+      this.orbiters.push({ mesh, coreX, direction, phase: (index / Math.max(1, total)) * Math.PI * 2 });
     };
     state.players.forEach((player, index) => {
       const side = index ? 5.8 : -5.8;
@@ -129,7 +129,7 @@ export class TableRenderer {
         const row = Math.floor(number / 5), column = number % 5;
         droneCube(side + direction * (1.7 + row * 0.72), -1.5 + column * 0.75);
       });
-      player.shields.forEach((shield, number) => shieldPlate(side, number, player.shields.length));
+      player.shields.forEach((shield, number) => shieldPlate(side, direction, number, player.shields.length));
     });
   }
   tick() {
@@ -137,7 +137,8 @@ export class TableRenderer {
     this.orbiters.forEach(orbiter => {
       const angle = orbiter.phase + time;
       orbiter.mesh.position.set(orbiter.coreX + Math.cos(angle) * 1.16, 0.3, Math.sin(angle) * 1.16);
-      orbiter.mesh.rotation.set(THREE.MathUtils.degToRad(102), -angle, 0);
+      // Piastra verticale: la faccia è rivolta verso la corsia dei propri Droni.
+      orbiter.mesh.rotation.set(0, 0, orbiter.direction * Math.PI / 2);
     });
     requestAnimationFrame(() => this.tick());
     this.renderer.render(this.scene, this.camera);

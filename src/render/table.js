@@ -35,6 +35,7 @@ export class TableRenderer {
     this.orbiters = [];
     this.floaters = [];
     this.lasers = [];
+    this.impacts = [];
     this.scene.add(this.units);
     this.installPointerControls();
     addEventListener('resize', () => this.resize());
@@ -101,6 +102,7 @@ export class TableRenderer {
     this.orbiters = [];
     this.floaters = [];
     this.lasers = [];
+    this.impacts = [];
     const marker = (x, z, color, size = 0.55) => {
       const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.18 }));
       mesh.rotation.x = -Math.PI / 2;
@@ -165,10 +167,11 @@ export class TableRenderer {
     const now=performance.now();
     this.lasers=this.lasers.filter(laser=>{
       const progress=(now-laser.started)/420;
-      if(progress>=1){this.units.remove(laser.mesh);return false}
+      if(progress>=1){this.units.remove(laser.mesh);const impact=new THREE.Mesh(new THREE.OctahedronGeometry(.5,0),new THREE.MeshStandardMaterial({color:0xffd36a,emissive:0xff5a10,emissiveIntensity:2}));impact.position.set(laser.end,.8,0);this.units.add(impact);this.impacts.push({mesh:impact,until:now+180});return false}
       laser.mesh.position.set(THREE.MathUtils.lerp(laser.start,laser.end,progress),.8,0);
       return true;
     });
+    this.impacts=this.impacts.filter(impact=>{if(now>=impact.until){this.units.remove(impact.mesh);return false}const scale=1+(impact.until-now)/180;impact.mesh.scale.setScalar(scale);return true});
     requestAnimationFrame(() => this.tick());
     this.renderer.render(this.scene, this.camera);
   }

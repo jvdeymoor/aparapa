@@ -14,7 +14,7 @@ Vinci portando l'Integrità del Nucleo nemico a zero o iniziando tre tuoi turni 
 
 ## Configurazione semplice
 
-All'inizio di `index.html` c'è la sezione `window.CONFIG`, con commenti italiani. Da lì puoi cambiare regole, colori, tavolo, carte, camera, luci, audio, animazioni e debug. I percorsi sostituibili degli asset sono in `CONFIG.IMAGES`; sono predisposte le cartelle `assets/images`, `assets/icons`, `assets/textures` e `assets/audio`.
+All'inizio di `index.html` c'è la sezione `window.CONFIG`, con commenti italiani. Da lì puoi cambiare regole, colori, tavolo, carte, camera, luci, audio, animazioni e debug. `UI_TEXT_SCALE:1.12` ingrandisce tutti i testi del 12% (ad esempio usa `1.25` per il 25%). I percorsi sostituibili degli asset sono in `CONFIG.IMAGES`; sono predisposte le cartelle `assets/images`, `assets/icons`, `assets/textures` e `assets/audio`.
 
 ## Struttura
 

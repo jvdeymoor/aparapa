@@ -38,6 +38,27 @@ function updateMobileStatus(){$('#mobileStatus').innerHTML=`${mobilePlayer(s.pla
 document.head.insertAdjacentHTML('beforeend',`<style>@media(max-width:600px){#mobileStatus{height:${27/textScale}svh!important}#arenaControls{position:absolute;right:7px;bottom:7px;z-index:3;display:grid;grid-template-columns:repeat(2,34px);gap:3px}#arenaControls button{padding:0;height:30px;background:#0b2458e8;border-color:#72aeff;color:#eaf5ff;font-size:16px}}</style>`);
 $('#arenaControls').addEventListener('pointerdown',event=>event.stopPropagation());$('#arenaControls').addEventListener('click',event=>{const button=event.target.closest('[data-arena]');if(!button)return;event.stopPropagation();const kind=button.dataset.arena;if(kind==='left'||kind==='right')R.pan(kind==='left'?-1:1);else{R.camera.zoom=Math.max(.7,Math.min(2.4,R.camera.zoom+(kind==='zoomIn'?.2:-.2)));R.camera.updateProjectionMatrix()}});R.resetView();
 document.head.insertAdjacentHTML('beforeend',`<style>@media(max-width:600px){header{padding-bottom:0!important;min-height:${76/textScale}px!important}#turnBanner{top:${48/textScale}px!important;bottom:auto!important;left:16px!important}#briscolaBanner{margin-top:3px!important}main{padding-top:3px!important}#arena{height:${31/textScale}svh!important}#threeCanvas{height:${31/textScale}svh!important}#mobileStatus{height:${22/textScale}svh!important}#hand{height:${25/textScale}svh!important;min-height:${25/textScale}svh!important}.card{height:100%!important}}</style>`);
+// Un solo riferimento mobile finale: lo zoom CSS globale rendeva imprevedibile il viewport di Chrome Android.
+// Qui le fasce sommano sempre al viewport reale (dvh), senza includere barre del browser.
+document.head.insertAdjacentHTML('beforeend',`<style>
+@media(max-width:600px){
+  *,*::before,*::after{box-sizing:border-box}
+  body{zoom:1!important;padding:0!important;overflow:hidden!important}
+  #app{height:100dvh!important;min-height:100dvh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  header{flex:0 0 76px!important;min-height:76px!important;padding:8px 10px!important}
+  #turnBanner{top:48px!important;bottom:auto!important;left:16px!important}
+  #briscolaBanner{flex:0 0 33px!important;height:33px!important;margin:3px 0 0!important}
+  main{flex:0 0 55dvh!important;display:block!important;padding:3px 8px!important;overflow:hidden!important}
+  #arena,#threeCanvas{height:31dvh!important;min-height:0!important}
+  #mobileStatus{height:24dvh!important;display:grid!important;grid-template-columns:1fr 24px 1fr!important;padding:4px 8px!important;gap:5px!important;overflow:hidden!important}
+  .mobile-player{height:100%!important;max-height:none!important;overflow:auto!important;overscroll-behavior:contain}
+  footer{flex:1 1 auto!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0 8px!important;overflow:hidden!important}
+  #hand{flex:1 1 auto!important;height:auto!important;min-height:0!important;max-height:none!important;padding:4px 0!important;align-items:stretch!important;overflow-x:auto!important;overflow-y:hidden!important}
+  .card{height:100%!important;min-height:0!important;max-height:none!important;flex:0 0 118px!important}
+  #actions{position:static!important;flex:0 0 54px!important;min-height:54px!important;padding:5px 0 7px!important}
+  #endTurn,#aiBtn{min-height:42px!important}
+}
+</style>`);
 setTimeout(()=>{let baseRender=render;render=()=>{baseRender();updateMobileStatus();if(matchMedia('(max-width:600px)').matches){$('#turnBanner').textContent=`TURNO ${s.turnId} · PLAYER ${s.active+1}`;$('#briscolaBanner span').textContent=`BRISCOLA ATTIVA · ${s.briscola.name}`;$('#briscolaBanner b').textContent=`MOSSE ${s.movesUsed} / ${C.RULES.MOVES_PER_TURN+(s.temp.reducedMoves[s.active]||0)}`;let p1=s.players[0],p2=s.players[1];$('#centerHud').innerHTML=`<div class="core-hud p1"><b>PLAYER 1</b><i>INTEGRITÀ <em>${p1.integrity}/${C.RULES.CORE_INTEGRITY}</em></i><i>ENERGIA <strong>${p1.energy}/${p1.maxEnergy}</strong></i></div><div class="core-hud p2"><b>PLAYER 2</b><i>INTEGRITÀ <em>${p2.integrity}/${C.RULES.CORE_INTEGRITY}</em></i><i>ENERGIA <strong>${p2.energy}/${p2.maxEnergy}</strong></i></div>`}else{$('#opponent .area-title').textContent='PLAYER 2';$('#current .area-title').textContent='PLAYER 1'}};render()},0);
 $('#menuButton').onclick=()=>document.querySelector('header').classList.toggle('menu-open');
 $('#logButton').onclick=()=>modal('registro',`<div class="rules"><h2>Registro di Battaglia</h2><p>Qui trovi ogni azione già risolta, utile per riprendere una partita asincrona.</p><div id="modalLog">${s.history.map(x=>`<p><b>Turno ${x.turnId}</b> — ${esc(x.text)}</p>`).join('')}</div></div>`);

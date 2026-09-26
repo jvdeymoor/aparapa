@@ -36,7 +36,7 @@ export class TableRenderer {
     this.syncTouchMode();
     this.tick();
   }
-  isLandscapePhone() { return matchMedia('(max-width:600px) and (orientation:landscape)').matches; }
+  isLandscapePhone() { return matchMedia('(pointer:coarse) and (orientation:landscape) and (max-height:600px)').matches; }
   syncTouchMode() { this.renderer.domElement.style.touchAction = this.isLandscapePhone() ? 'auto' : 'none'; }
   resize() {
     const width = this.el.clientWidth, height = this.el.clientHeight || 300, aspect = width / height, vertical = 9;
@@ -70,6 +70,7 @@ export class TableRenderer {
       canvas.setPointerCapture(event.pointerId);
     });
     canvas.addEventListener('pointermove', event => {
+      if (this.isLandscapePhone()) { origin = null; return; }
       if (!origin || !canvas.hasPointerCapture(event.pointerId)) return;
       const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
       this.target.set(origin.target.x - (event.clientX - origin.x) * scale, 0, origin.target.z - (event.clientY - origin.y) * scale);

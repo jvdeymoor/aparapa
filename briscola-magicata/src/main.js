@@ -1,7 +1,7 @@
 import{newGame,act,endTurn,autoPlay,legal}from'./game/engine.js';import{byId,CARD_POOL,DECK_CATEGORIES,DECK_LIMITS,DEFAULT_DECK_COUNTS}from'./data/cards.js';import{LocalGameAdapter}from'./storage/adapter.js';import{TableRenderer}from'./render/table.js';
 document.title='BRISCOLA MAGICATA';document.querySelector('.brand').innerHTML='BRISCOLA <span>MAGICATA</span> <small>ASYNCHRONOUS CARD CONFLICT</small>';document.querySelector('.brand').style.visibility='visible';
 // Layout mobile: la mano scorre col pollice e Fine Turno resta sempre raggiungibile.
-document.head.insertAdjacentHTML('beforeend',`<style>.card-preview{min-width:min(330px,88vw);border:2px solid var(--c);padding:14px;background:linear-gradient(150deg,#162952,#0c1026)}.card-preview>span{color:var(--c);font:13px monospace}.card-preview h2{font-size:28px;margin:12px 0}.card-preview .cost{font-size:21px;color:#ffe07a}.card-preview .warning{color:#ff6573}</style>`);
+document.head.insertAdjacentHTML('beforeend',`<style>.debug-ai{display:none!important}.card-preview{min-width:min(330px,88vw);border:2px solid var(--c);padding:14px;background:linear-gradient(150deg,#162952,#0c1026)}.card-preview>span{color:var(--c);font:13px monospace}.card-preview h2{font-size:28px;margin:12px 0}.card-preview .cost{font-size:21px;color:#ffe07a}.card-preview .warning{color:#ff6573}</style>`);
 document.querySelector('header').insertAdjacentHTML('beforeend','<button id="rulesButton" aria-label="Apri le Regole">?</button>');
 document.querySelector('header').insertAdjacentHTML('beforeend','<button id="onlineButton" aria-label="Partita online">◎</button>');
 document.head.insertAdjacentHTML('beforeend',`<style>

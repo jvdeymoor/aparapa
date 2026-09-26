@@ -1,10 +1,10 @@
-# NEON//WAR
+# BRISCOLA MAGICATA
 
 Gioco di carte strategico futuristico per due giocatori, progettato per turni asincroni senza timer. È completamente locale: non invia dati, non richiede account, server, installazioni o connessione per giocare.
 
 ## Avvio
 
-Apri semplicemente `index.html` in un browser moderno. La libreria Three.js è già inclusa in `vendor/`; non c'è CDN né build da eseguire.
+Chrome/Edge normalmente permettono di aprire semplicemente `index.html`. Firefox, per protezione, può bloccare i moduli JavaScript quando un file viene aperto come `file://`: in quel caso fai doppio clic su `Avvia-NEON-WAR.desktop` oppure esegui `./avvia-neon-war.sh`. Avvia un piccolo server **solo su questo computer** (`127.0.0.1:8765`) e apre il gioco; non scarica né invia dati. La libreria Three.js è già inclusa in `vendor/`; non c'è CDN né build da eseguire.
 
 ## Come giocare
 

@@ -14,7 +14,7 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 </style>`);
 const C=window.CONFIG,A=new LocalGameAdapter();let s=A.load()||newGame(C),selected=null;const $=q=>document.querySelector(q),esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));const R=new TableRenderer($('#threeCanvas'),C);
 // La camera e la tavola restano nella stessa vista standard tra un turno e l'altro.
-const standardTableUpdate=R.update.bind(R);R.update=(state)=>{standardTableUpdate(state);R.group.rotation.y=0};
+const standardTableUpdate=R.update.bind(R);R.update=(state)=>{standardTableUpdate(state);let n=0;state.players.forEach((p,i)=>{let side=i?2.7:-2.7;let core=R.group.children[n++];if(core){core.position.x=side;core.position.z=0}p.drones.forEach((d,k)=>{let piece=R.group.children[n++];if(piece){piece.position.x=side+(i?-0.8:0.8);piece.position.z=-.9+k*.7}});p.shields.forEach((d,k)=>{let piece=R.group.children[n++];if(piece){piece.position.x=side+(i?-.7:.7);piece.position.z=.9-k*.55}})});R.group.rotation.y=0};
 // Scala reale dell'interfaccia: include anche testi con dimensioni CSS espresse in pixel.
 const textScale=Math.max(.75,Math.min(1.5,C.UI_TEXT_SCALE||1));document.body.style.zoom=textScale;
 // Con lo zoom, le altezze si compensano: le carte restano sempre dentro al display.

@@ -115,7 +115,7 @@ export class TableRenderer {
     };
     const shieldPlate = (coreX, index, total) => {
       // Faccia quasi pari allo sprite precedente, ma con uno spessore molto ridotto.
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.36), new THREE.MeshStandardMaterial({ color: 0x77aee0, roughness: 0.35, metalness: 0.48 }));
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.36), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.48 }));
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.units.add(mesh);
@@ -127,7 +127,7 @@ export class TableRenderer {
       core(side, index ? 0xe3485c : 0x238fc3);
       player.drones.forEach((drone, number) => {
         const row = Math.floor(number / 5), column = number % 5;
-        droneCube(side + direction * (1.2 + row * 0.72), -1.5 + column * 0.75);
+        droneCube(side + direction * (1.7 + row * 0.72), -1.5 + column * 0.75);
       });
       player.shields.forEach((shield, number) => shieldPlate(side, number, player.shields.length));
     });
@@ -137,7 +137,7 @@ export class TableRenderer {
     this.orbiters.forEach(orbiter => {
       const angle = orbiter.phase + time;
       orbiter.mesh.position.set(orbiter.coreX + Math.cos(angle) * 1.16, 0.3, Math.sin(angle) * 1.16);
-      orbiter.mesh.rotation.y = -angle;
+      orbiter.mesh.rotation.set(THREE.MathUtils.degToRad(102), -angle, 0);
     });
     requestAnimationFrame(() => this.tick());
     this.renderer.render(this.scene, this.camera);

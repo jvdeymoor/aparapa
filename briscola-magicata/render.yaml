@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: briscola-magicata
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://aparapa.com,https://www.aparapa.com

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Avvia NEON//WAR
+Comment=Avvia NEON//WAR solo sul computer locale
+Exec=sh -c 'cd /home/f/NEON-WAR && ./avvia-neon-war.sh'
+Terminal=false
+Categories=Game;

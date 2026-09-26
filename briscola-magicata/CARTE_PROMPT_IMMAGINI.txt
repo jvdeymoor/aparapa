@@ -1,0 +1,81 @@
+BRISCOLA MAGICATA — NOMI E DESCRIZIONI CARTE
+Usa ogni riga come base per un prompt di illustrazione. Mantieni uno stile sci-fi orbitale, senza testo nell'immagine.
+
+[SCUDO]
+Barriera Ionica — Installa uno Scudo con 2 protezione.
+Muro Prisma — Installa uno Scudo con 3 protezione.
+Scudo Rigenerante — Installa uno Scudo con 4 protezione.
+Velo Anti-Laser — Installa uno Scudo con 5 protezione.
+Cupola Sacrificale — Installa uno Scudo con 2 protezione.
+Deflettore Orbitale — Installa uno Scudo con 3 protezione.
+Piastra Quantica — Installa uno Scudo con 4 protezione.
+Baluardo Ricorsivo — Installa uno Scudo con 5 protezione.
+Specchio di Fase — Installa uno Scudo con 2 protezione.
+Rete Anti-Radiazione — Installa uno Scudo con 3 protezione.
+
+[VIRUS]
+Worm Rosso — Installa un Virus: al prossimo turno infligge 1 danno.
+Backdoor Luna — Installa un Virus: al prossimo turno infligge 2 danni.
+Cascata 404 — Installa un Virus: al prossimo turno infligge 1 danno.
+Ruggine Logica — Installa un Virus: al prossimo turno infligge 2 danni.
+Crittografia Ostile — Installa un Virus: al prossimo turno infligge 1 danno.
+Bug Profondo — Installa un Virus: al prossimo turno infligge 2 danni.
+Eco Corrotta — Installa un Virus: al prossimo turno infligge 1 danno.
+Nero di Sistema — Installa un Virus: al prossimo turno infligge 2 danni.
+Falso Positivo — Installa un Virus: al prossimo turno infligge 1 danno.
+Sanguisuga RAM — Installa un Virus: al prossimo turno infligge 2 danni.
+
+[DRONE]
+Scout K-9 — Drone persistente 1/2. Può attaccare una volta per turno.
+Sentinella — Drone persistente 2/3. Può attaccare una volta per turno.
+Riparatore — Drone persistente 3/4. Può attaccare una volta per turno.
+Mietitore — Drone persistente 4/5. Può attaccare una volta per turno.
+Guardiano — Drone persistente 1/2. Può attaccare una volta per turno.
+Tessitore — Drone persistente 2/3. Può attaccare una volta per turno.
+Lancia Droni — Drone persistente 3/4. Può attaccare una volta per turno.
+Araldo — Drone persistente 4/5. Può attaccare una volta per turno.
+Raptor — Drone persistente 1/2. Può attaccare una volta per turno.
+Anfora — Drone persistente 2/3. Può attaccare una volta per turno.
+Vettore — Drone persistente 3/4. Può attaccare una volta per turno.
+Corvo — Drone persistente 4/5. Può attaccare una volta per turno.
+Aegis — Drone persistente 1/2. Può attaccare una volta per turno.
+Mantis — Drone persistente 2/3. Può attaccare una volta per turno.
+Oracolo — Drone persistente 3/4. Può attaccare una volta per turno.
+
+[RADIAZIONE]
+Polvere Solare — Applica Radiazione 2: 1 danno a inizio turno finché dura.
+Isotopo Nero — Applica Radiazione 3: 1 danno a inizio turno finché dura.
+Pioggia Gamma — Applica Radiazione 4: 1 danno a inizio turno finché dura.
+Forgia Cobalto — Applica Radiazione 2: 1 danno a inizio turno finché dura.
+Bruma Verde — Applica Radiazione 3: 1 danno a inizio turno finché dura.
+Nodo Instabile — Applica Radiazione 4: 1 danno a inizio turno finché dura.
+Scia di Reattore — Applica Radiazione 2: 1 danno a inizio turno finché dura.
+Decadimento — Applica Radiazione 3: 1 danno a inizio turno finché dura.
+Frazione Critica — Applica Radiazione 4: 1 danno a inizio turno finché dura.
+Chernobyl Express — Applica Radiazione 2: 1 danno a inizio turno finché dura.
+
+[LASER]
+Raggio Corto — Infligge 2 danni a Nucleo, Scudo o Drone.
+Taglio Orbitale — Infligge 3 danni a Nucleo, Scudo o Drone.
+Lancia Fotoni — Infligge 4 danni a Nucleo, Scudo o Drone.
+Cannone Nova — Infligge 5 danni a Nucleo, Scudo o Drone.
+Fascio a Ioni — Infligge 2 danni a Nucleo, Scudo o Drone.
+Incisione Rossa — Infligge 3 danni a Nucleo, Scudo o Drone.
+Fuoco Freddo — Infligge 4 danni a Nucleo, Scudo o Drone.
+Lama Solare — Infligge 5 danni a Nucleo, Scudo o Drone.
+Puntatore Finale — Infligge 2 danni a Nucleo, Scudo o Drone.
+Raggio Diffratto — Infligge 3 danni a Nucleo, Scudo o Drone.
+Cecchino — Infligge 4 danni a Nucleo, Scudo o Drone.
+Supernova — Infligge 5 danni a Nucleo, Scudo o Drone.
+
+[MAGICATA]
+CTRL+Z — Pesca 2 carte e recupera 2 Integrità.
+FIDATI — Scambia la Radiazione dei due Nuclei.
+NON ERA PREVISTO — L’avversario perde una mossa al prossimo turno.
+RIUNIONE CHE POTEVA ESSERE UNA MAIL — Sostituisce subito la Briscola.
+BRISCOLA NUCLEARE — Pesca 2 carte e recupera 2 Integrità.
+GATTO NEL REATTORE — Scambia la Radiazione dei due Nuclei.
+SINDACATO DEI ROBOT — L’avversario perde una mossa al prossimo turno.
+TASTO QUALUNQUE — Sostituisce subito la Briscola.
+CAFFÈ QUANTICO — Pesca 2 carte e recupera 2 Integrità.
+BUG O FEATURE — Scambia la Radiazione dei due Nuclei.

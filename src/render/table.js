@@ -8,22 +8,33 @@ export class TableRenderer {
     this.scene.background = new THREE.Color(0x182234);
     this.target = new THREE.Vector3(0, 0, 0);
     this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
-    this.camera.position.set(0, 11, 10);
+    this.camera.position.set(0, 11, 16.5);
     this.camera.lookAt(this.target);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     element.append(this.renderer.domElement);
 
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshBasicMaterial({ color: 0x47505b }));
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshStandardMaterial({ color: 0x47505b, roughness: 0.82, metalness: 0.12 }));
     slab.position.y = -0.15;
+    slab.receiveShadow = true;
     this.scene.add(slab);
-    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshBasicMaterial({ color: 0x9aa1aa }));
+    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshStandardMaterial({ color: 0x9aa1aa, roughness: 0.72, metalness: 0.08 }));
     field.rotation.x = -Math.PI / 2;
+    field.receiveShadow = true;
     this.scene.add(field);
     const border = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(13.8, 7.8)), new THREE.LineBasicMaterial({ color: 0xd7dde4 }));
     border.rotation.x = -Math.PI / 2;
     border.position.y = 0.01;
     this.scene.add(border);
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+    this.spot = new THREE.SpotLight(0xffffff, 5.5, 28, 0.62, 0.25, 1.3);
+    this.spot.position.set(0, 13.8, 0);
+    this.spot.castShadow = true;
+    this.spot.shadow.mapSize.set(1024, 1024);
+    this.spot.target.position.set(0, 0, 0);
+    this.scene.add(this.spot, this.spot.target);
     this.units = new THREE.Group();
     this.scene.add(this.units);
     this.installPointerControls();
@@ -49,7 +60,7 @@ export class TableRenderer {
   }
   resetView() {
     this.target.set(0, 0, 0);
-    this.camera.position.set(0, 11, 10);
+    this.camera.position.set(0, 11, 16.5);
     this.camera.zoom = 1;
     this.camera.lookAt(this.target);
     this.camera.updateProjectionMatrix();
@@ -58,7 +69,7 @@ export class TableRenderer {
     this.target.x += horizontal;
     this.target.z += vertical;
     this.camera.position.x = this.target.x;
-    this.camera.position.z = this.target.z + 10;
+    this.camera.position.z = this.target.z + 16.5;
     this.camera.lookAt(this.target);
   }
   installPointerControls() {
@@ -74,7 +85,7 @@ export class TableRenderer {
       if (!origin || !canvas.hasPointerCapture(event.pointerId)) return;
       const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
       this.target.set(origin.target.x - (event.clientX - origin.x) * scale, 0, origin.target.z - (event.clientY - origin.y) * scale);
-      this.camera.position.set(this.target.x, 11, this.target.z + 10);
+      this.camera.position.set(this.target.x, 11, this.target.z + 16.5);
       this.camera.lookAt(this.target);
     });
     canvas.addEventListener('pointerup', () => { origin = null; });
@@ -82,14 +93,22 @@ export class TableRenderer {
   update(state) {
     this.units.clear();
     const marker = (x, z, color, size = 0.55) => {
-      const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshBasicMaterial({ color }));
+      const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.18 }));
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(x, 0.03, z);
+      mesh.castShadow = true;
       this.units.add(mesh);
     };
     const core = (x, color) => {
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 14), new THREE.MeshBasicMaterial({ color }));
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 14), new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.32 }));
       mesh.position.set(x, 0.8, 0);
+      mesh.castShadow = true;
+      this.units.add(mesh);
+    };
+    const droneCube = (x, z) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.52), new THREE.MeshStandardMaterial({ color: 0x59636e, roughness: 0.48, metalness: 0.35 }));
+      mesh.position.set(x, 0.28, z);
+      mesh.castShadow = true;
       this.units.add(mesh);
     };
     state.players.forEach((player, index) => {
@@ -98,7 +117,7 @@ export class TableRenderer {
       core(side, index ? 0xe3485c : 0x238fc3);
       player.drones.forEach((drone, number) => {
         const row = Math.floor(number / 5), column = number % 5;
-        marker(side + direction * (1.2 + row * 0.72), -1.5 + column * 0.75, 0x59636e, 0.28);
+        droneCube(side + direction * (1.2 + row * 0.72), -1.5 + column * 0.75);
       });
       player.shields.forEach((shield, number) => {
         const row = Math.floor(number / 5), column = number % 5;

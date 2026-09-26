@@ -10,15 +10,39 @@ window.CONFIG={
  RULES:{CORE_INTEGRITY:20,STARTING_HAND:5,DECK_SIZE:30,MAX_HAND:8,MOVES_PER_TURN:2,START_ENERGY:3,START_MAX_ENERGY:3,ENERGY_EVERY_TURNS:3,ABSOLUTE_MAX_ENERGY:7,BRISCOLA_EVERY_ROUNDS:5,DOMINION_THRESHOLD:10,DOMINION_TURNS_TO_WIN:3,MAX_MAGIFICATE:2,DRAW_PER_TURN:1,DECKOUT_DAMAGE_START:1},
  /* ASPETTO DEL TAVOLO */ TABLE:{WIDTH:15,HEIGHT:9,DEPTH:0.5,TILT:-0.55,SCALE:1,PLAYER_DISTANCE:5,CARD_ZONE_SIZE:4,CARD_GAP:0.65},
  /* CARTE */ CARDS:{WIDTH:1.15,HEIGHT:1.65,THICKNESS:0.08,ROUNDING:0.12,SCALE:1,HAND_Y:-2.7,FIELD_Y:0,ANIMATION_MS:260,DRAG_HEIGHT:0.7,TEXT_SIZE:14,BACK_IMAGE:'assets/images/card-back.png',BORDER:'#b8f7ff'},
- /* TESTO: cambia 1 in 1.15 per ingrandire tutto del 15%; usa 0.9 per ridurre. */ UI_TEXT_SCALE:1.12,
+ /* TESTO: cambia 1 in 1.15 per ingrandire tutto del 15%; usa 0.9 per ridurre. */ UI_TEXT_SCALE:1.30,
  /* COLORI */ COLORS:{BACKGROUND:'#050817',TABLE:'#101a37',P1:'#37e9ff',P2:'#ff354c',SHIELD:'#54d6ff',VIRUS:'#ff354c',DRONE:'#f6c84b',RADIATION:'#a7ff3e',BRISCOLA:'#ff9d35',LASER:'#ff354c',MAGICATA:'#ff354c',ENERGY:'#67edff',INTEGRITY:'#55ff9a',DOMINION:'#f9ce55',TEXT:'#e8f3ff',BUTTON:'#1d5cff',HIGHLIGHT:'#fff176',DAMAGE:'#ff354c',HEAL:'#50ffab',ERROR:'#ff8f8f'},
  /* TESTI */ TEXT:{GAME_NAME:'BRISCOLA MAGICATA',END_TURN:'FINE TURNO',ENERGY:'Energia',INTEGRITY:'Integrità',DOMINION:'Dominio',HAND:'Mano',DECK:'Mazzo',LOG:'Registro',VICTORY:'VITTORIA',DEFEAT:'SCONFITTA'},
- /* SPRITE E IMMAGINI: sostituisci qui i percorsi; l'UI usa icone vettoriali di fallback. */ IMAGES:{BACKGROUND:'assets/images/background.png',TABLE_TEXTURE:'assets/textures/table.png',CARD_BACK:'assets/images/card-back.png',CATEGORY_ICONS:'assets/icons/',AVATARS:'assets/images/'},
+ /* =================================================================
+    GRAFICA — inserisci qui soltanto percorsi LOCALI. Le risorse sono
+    raggruppate per uso: cambiare un percorso non modifica le regole.
+    Se un file non esiste, il gioco usa le forme 3D/icone predefinite.
+    ================================================================= */
+ GRAPHICS:{
+   // ARENA: immagini di sfondo della zona 3D e texture di erba/terra.
+   ARENA_BACKGROUND:'assets/images/arena/background.png',
+   TABLE_GRASS_TEXTURE:'assets/textures/arena/grass.png',
+   TABLE_EARTH_TEXTURE:'assets/textures/arena/earth.png',
+   // MODELLI 3D: GLB/GLTF sostituibili per le pedine dell'arena.
+   DRONE_MODEL:'assets/models/drone.glb',
+   VIRUS_MODEL:'assets/models/virus.glb',
+   RADIATION_MODEL:'assets/models/radiation.glb',
+   CORE_MODEL:'assets/models/core.glb',
+   // CARTE: sfondo comune, retro e illustrazioni delle singole carte.
+   CARD_BACKGROUND_TEXTURE:'assets/images/cards/card-background.png',
+   CARD_BACK_IMAGE:'assets/images/cards/card-back.png',
+   CARD_IMAGES_FOLDER:'assets/images/cards/',
+   // UI e effetti 2D opzionali.
+   BACKGROUND_IMAGE:'assets/images/background.png',
+   CATEGORY_ICONS_FOLDER:'assets/icons/',
+   AVATARS_FOLDER:'assets/images/avatars/',
+   EFFECTS_FOLDER:'assets/images/effects/'
+ },
  /* AUDIO: nessun file incluso; aggiungine uno in assets/audio e inserisci il percorso. */ AUDIO:{MASTER:0.7,EFFECTS:0.8,MUSIC:0.4,MUTED:true,MUSIC_FILE:'assets/audio/music.ogg'},
  /* ANIMAZIONI */ ANIMATION:{DURATION:260,SPEED:1,INTENSITY:1,LIFT:0.7,ROTATION:0.08,BOUNCE:0.15,SHAKE:0.18,LASER:1,SHIELD:1,VIRUS:1,RADIATION:1,MAGICATA:1,REDUCED:false},
- /* CAMERA THREE.JS */ CAMERA:{X:0,Y:7.8,Z:8.8,FOV:43,ZOOM:1,TARGET_X:0,TARGET_Y:0,TARGET_Z:0,ALLOW_MOVE:false,TRANSITION_MS:400},
+ /* CAMERA THREE.JS: vista alta e arretrata, simile a una tribuna sul campo. */ CAMERA:{X:0,Y:11,Z:15,FOV:38,ZOOM:1,TARGET_X:0,TARGET_Y:0,TARGET_Z:0,ALLOW_MOVE:false,TRANSITION_MS:400},
  /* LUCI THREE.JS */ LIGHTS:{TYPE:'point',X:0,Y:6,Z:4,INTENSITY:25,COLOR:'#82cfff',DISTANCE:20,SHADOWS:false},
  /* DEBUG */ DEBUG:{SHOW_FPS:false,SHOW_HITBOX:false,SHOW_COORDS:false,VERBOSE_LOGS:false,TEST_MODE:false,HAND_VISIBLE:true,AI_DEBUG:false,FAST_ANIMATIONS:false}
 };
-</script><link rel="stylesheet" href="src/ui/style.css"></head>
+</script><style>.brand{visibility:hidden}</style><link rel="stylesheet" href="src/ui/style.css"></head>
 <body><div id="app"><header><div class="brand">NEON<span>//</span>WAR <small>ASYNCHRONOUS CARD CONFLICT</small></div><div id="turnBanner"></div><nav><button data-modal="rules">REGOLE</button><button data-modal="deck">MAZZI</button><button data-modal="tutorial">TUTORIAL</button><button id="saveBtn">SALVA</button><button id="exportBtn">ESPORTA</button><label class="import">IMPORTA<input id="importInput" type="file" accept="application/json"></label><button id="resetBtn" class="danger">RESET</button></nav></header><main><section id="opponent" class="player-area"></section><section id="arena"><div id="threeCanvas" aria-label="Tavolo 3D Three.js"></div><div id="centerHud"></div></section><section id="current" class="player-area"></section></main><aside id="logPanel"><h2>REGISTRO DI BATTAGLIA</h2><div id="summary"></div><div id="log"></div></aside><footer><div id="hand"></div><div id="actions"><div id="selected"></div><button id="endTurn" class="primary">FINE TURNO</button><button id="aiBtn">AI: GIOCA TURNO</button></div></footer></div><div id="modalRoot"></div><script type="module" src="src/main.js"></script></body></html>

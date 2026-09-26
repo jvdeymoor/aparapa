@@ -27,6 +27,7 @@ function json(res, status, body) { res.writeHead(status, { 'content-type':'appli
 async function body(req) { let raw=''; for await (const part of req) raw += part; return raw ? JSON.parse(raw) : {}; }
 function playerOf(game, accessToken) { return game.tokens.findIndex(value => value === accessToken); }
 function publicState(game, player) {
+  if (!game.state) return { code:game.code, joined:false, player, waiting:true };
   const state = structuredClone(game.state);
   state.players.forEach((p, index) => { if (index !== player) { p.hand = p.hand.map(() => 'hidden'); p.deck = Array(p.deck.length).fill('hidden'); } });
   return { code:game.code, joined:!!game.tokens[1], player, state };
@@ -44,25 +45,25 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`), parts = url.pathname.split('/').filter(Boolean);
     if (req.method === 'POST' && url.pathname === '/api/games') {
-      const input = await body(req), game = { code:code(), tokens:[token(), null], state:newGame(CONFIG, Date.now(), input.deckCounts), createdAt:new Date(), updatedAt:new Date() };
+      const input = await body(req), game = { code:code(), tokens:[token(), null], deckCounts:[input.deckCounts, null], state:null, createdAt:new Date(), updatedAt:new Date() };
       await save(game); return json(res, 201, { code:game.code, accessToken:game.tokens[0], player:0 });
     }
     if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'games' && parts[3] === 'join') {
       const game = await load(parts[2]); if (!game) return json(res, 404, { error:'Partita non trovata' });
       if (game.tokens[1]) return json(res, 409, { error:'Partita già completa' });
-      game.tokens[1] = token(); game.updatedAt = new Date(); await save(game); return json(res, 200, { code:game.code, accessToken:game.tokens[1], player:1 });
+      const input = await body(req); game.tokens[1] = token(); game.deckCounts[1] = input.deckCounts; game.state = newGame(CONFIG, Date.now(), game.deckCounts); game.updatedAt = new Date(); await save(game); return json(res, 200, { code:game.code, accessToken:game.tokens[1], player:1 });
     }
     if (parts[0] === 'api' && parts[1] === 'games' && parts[2]) {
       const game = await load(parts[2]); if (!game) return json(res, 404, { error:'Partita non trovata' });
       const player = playerOf(game, req.headers.authorization?.replace('Bearer ', '')); if (player < 0) return json(res, 401, { error:'Accesso non valido' });
       if (req.method === 'GET') return json(res, 200, publicState(game, player));
       if (req.method === 'POST' && parts[3] === 'action') {
-        if (!game.tokens[1]) return json(res, 409, { error:'In attesa del secondo giocatore' });
+        if (!game.tokens[1] || !game.state) return json(res, 409, { error:'In attesa del secondo giocatore' });
         if (game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });
         const input = await body(req); game.state = act(game.state, CONFIG, input.action); game.updatedAt = new Date(); await save(game); return json(res, 200, publicState(game, player));
       }
       if (req.method === 'POST' && parts[3] === 'end-turn') {
-        if (!game.tokens[1]) return json(res, 409, { error:'In attesa del secondo giocatore' });
+        if (!game.tokens[1] || !game.state) return json(res, 409, { error:'In attesa del secondo giocatore' });
         if (game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });
         game.state = endTurn(game.state, CONFIG); game.updatedAt = new Date(); await save(game); return json(res, 200, publicState(game, player));
       }

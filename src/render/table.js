@@ -36,6 +36,7 @@ export class TableRenderer {
     this.spot.target.position.set(0, 0, 0);
     this.scene.add(this.spot, this.spot.target);
     this.units = new THREE.Group();
+    this.orbiters = [];
     this.scene.add(this.units);
     this.installPointerControls();
     addEventListener('resize', () => this.resize());
@@ -92,6 +93,7 @@ export class TableRenderer {
   }
   update(state) {
     this.units.clear();
+    this.orbiters = [];
     const marker = (x, z, color, size = 0.55) => {
       const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.18 }));
       mesh.rotation.x = -Math.PI / 2;
@@ -111,6 +113,14 @@ export class TableRenderer {
       mesh.castShadow = true;
       this.units.add(mesh);
     };
+    const shieldPlate = (coreX, index, total) => {
+      // Faccia quasi pari allo sprite precedente, ma con uno spessore molto ridotto.
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.36), new THREE.MeshStandardMaterial({ color: 0x77aee0, roughness: 0.35, metalness: 0.48 }));
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.units.add(mesh);
+      this.orbiters.push({ mesh, coreX, phase: (index / Math.max(1, total)) * Math.PI * 2 });
+    };
     state.players.forEach((player, index) => {
       const side = index ? 5.8 : -5.8;
       const direction = index ? -1 : 1;
@@ -119,11 +129,17 @@ export class TableRenderer {
         const row = Math.floor(number / 5), column = number % 5;
         droneCube(side + direction * (1.2 + row * 0.72), -1.5 + column * 0.75);
       });
-      player.shields.forEach((shield, number) => {
-        const row = Math.floor(number / 5), column = number % 5;
-        marker(side + direction * (0.85 + row * 0.5), -1.25 + column * 0.63, 0x77aee0, 0.22);
-      });
+      player.shields.forEach((shield, number) => shieldPlate(side, number, player.shields.length));
     });
   }
-  tick() { requestAnimationFrame(() => this.tick()); this.renderer.render(this.scene, this.camera); }
+  tick() {
+    const time = performance.now() * 0.00055;
+    this.orbiters.forEach(orbiter => {
+      const angle = orbiter.phase + time;
+      orbiter.mesh.position.set(orbiter.coreX + Math.cos(angle) * 1.16, 0.3, Math.sin(angle) * 1.16);
+      orbiter.mesh.rotation.y = -angle;
+    });
+    requestAnimationFrame(() => this.tick());
+    this.renderer.render(this.scene, this.camera);
+  }
 }

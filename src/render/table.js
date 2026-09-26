@@ -16,18 +16,14 @@ export class TableRenderer {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     element.append(this.renderer.domElement);
 
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshStandardMaterial({ color: 0x47505b, roughness: 0.82, metalness: 0.12 }));
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshStandardMaterial({ color: 0x5a351d, roughness: 0.96, metalness: 0 }));
     slab.position.y = -0.15;
     slab.receiveShadow = true;
     this.scene.add(slab);
-    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshStandardMaterial({ color: 0x9aa1aa, roughness: 0.72, metalness: 0.08 }));
+    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshStandardMaterial({ color: 0x3f7f3b, roughness: 0.98, metalness: 0 }));
     field.rotation.x = -Math.PI / 2;
     field.receiveShadow = true;
     this.scene.add(field);
-    const border = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(13.8, 7.8)), new THREE.LineBasicMaterial({ color: 0xd7dde4 }));
-    border.rotation.x = -Math.PI / 2;
-    border.position.y = 0.01;
-    this.scene.add(border);
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.28));
     this.spot = new THREE.SpotLight(0xffffff, 5.5, 28, 0.62, 0.25, 1.3);
     this.spot.position.set(0, 13.8, 0);
@@ -37,6 +33,8 @@ export class TableRenderer {
     this.scene.add(this.spot, this.spot.target);
     this.units = new THREE.Group();
     this.orbiters = [];
+    this.floaters = [];
+    this.lasers = [];
     this.scene.add(this.units);
     this.installPointerControls();
     addEventListener('resize', () => this.resize());
@@ -91,9 +89,18 @@ export class TableRenderer {
     });
     canvas.addEventListener('pointerup', () => { origin = null; });
   }
+  fireLaser(owner) {
+    const start = owner ? 5.1 : -5.1, end = owner ? -5.1 : 5.1;
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshStandardMaterial({ color: 0xff354c, emissive: 0xff1025, emissiveIntensity: 2 }));
+    mesh.castShadow = true;
+    this.units.add(mesh);
+    this.lasers.push({ mesh, start, end, started: performance.now() });
+  }
   update(state) {
     this.units.clear();
     this.orbiters = [];
+    this.floaters = [];
+    this.lasers = [];
     const marker = (x, z, color, size = 0.55) => {
       const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.18 }));
       mesh.rotation.x = -Math.PI / 2;
@@ -121,6 +128,14 @@ export class TableRenderer {
       this.units.add(mesh);
       this.orbiters.push({ mesh, coreX, direction, phase: (index / Math.max(1, total)) * Math.PI * 2 });
     };
+    const floatingEffect = (coreX, index, kind) => {
+      const geometry = kind==='virus'?new THREE.ConeGeometry(0.24, 0.5, 4):new THREE.OctahedronGeometry(0.24);
+      const material = new THREE.MeshStandardMaterial({ color: kind==='virus'?0xff354c:0xa7ff3e, emissive: kind==='virus'?0x5b0010:0x294d00, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.25 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      this.units.add(mesh);
+      this.floaters.push({ mesh, coreX, phase:index*.9, radius:.52+index*.08 });
+    };
     state.players.forEach((player, index) => {
       const side = index ? 5.8 : -5.8;
       const direction = index ? -1 : 1;
@@ -130,6 +145,8 @@ export class TableRenderer {
         droneCube(side + direction * (1.7 + row * 0.72), -1.5 + column * 0.75);
       });
       player.shields.forEach((shield, number) => shieldPlate(side, direction, number, player.shields.length));
+      player.viruses.forEach((virus, number) => floatingEffect(side, number, 'virus'));
+      for(let number=0;number<player.radiation;number++)floatingEffect(side, number+player.viruses.length, 'radiation');
     });
   }
   tick() {
@@ -139,6 +156,18 @@ export class TableRenderer {
       orbiter.mesh.position.set(orbiter.coreX + Math.cos(angle) * 1.16, 0.3, Math.sin(angle) * 1.16);
       // Piastra verticale: la faccia è rivolta verso la corsia dei propri Droni.
       orbiter.mesh.rotation.set(0, 0, orbiter.direction * Math.PI / 2);
+    });
+    this.floaters.forEach(floater => {
+      const angle=time*1.8+floater.phase;
+      floater.mesh.position.set(floater.coreX+Math.cos(angle)*floater.radius,1.45+Math.sin(angle*2)*.16,Math.sin(angle)*floater.radius);
+      floater.mesh.rotation.y=angle*2;
+    });
+    const now=performance.now();
+    this.lasers=this.lasers.filter(laser=>{
+      const progress=(now-laser.started)/420;
+      if(progress>=1){this.units.remove(laser.mesh);return false}
+      laser.mesh.position.set(THREE.MathUtils.lerp(laser.start,laser.end,progress),.8,0);
+      return true;
     });
     requestAnimationFrame(() => this.tick());
     this.renderer.render(this.scene, this.camera);

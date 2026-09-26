@@ -14,13 +14,13 @@ export class TableRenderer {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.append(this.renderer.domElement);
 
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshBasicMaterial({ color: 0x193454 }));
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshBasicMaterial({ color: 0x47505b }));
     slab.position.y = -0.15;
     this.scene.add(slab);
-    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshBasicMaterial({ color: 0xdde8f5 }));
+    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshBasicMaterial({ color: 0x9aa1aa }));
     field.rotation.x = -Math.PI / 2;
     this.scene.add(field);
-    const border = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(13.8, 7.8)), new THREE.LineBasicMaterial({ color: 0x27466d }));
+    const border = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(13.8, 7.8)), new THREE.LineBasicMaterial({ color: 0xd7dde4 }));
     border.rotation.x = -Math.PI / 2;
     border.position.y = 0.01;
     this.scene.add(border);
@@ -76,11 +76,23 @@ export class TableRenderer {
       mesh.position.set(x, 0.03, z);
       this.units.add(mesh);
     };
+    const core = (x, color) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 14), new THREE.MeshBasicMaterial({ color }));
+      mesh.position.set(x, 0.8, 0);
+      this.units.add(mesh);
+    };
     state.players.forEach((player, index) => {
-      const side = index ? 2.8 : -2.8;
-      marker(side, 0, index ? 0xe3485c : 0x238fc3, 0.8);
-      player.drones.forEach((drone, number) => marker(side + (index ? -0.9 : 0.9), -1.3 + number * 0.75, 0x7c8797, 0.28));
-      player.shields.forEach((shield, number) => marker(side + (index ? -0.8 : 0.8), 1.3 - number * 0.62, 0x5c9ed0, 0.22));
+      const side = index ? 5.8 : -5.8;
+      const direction = index ? -1 : 1;
+      core(side, index ? 0xe3485c : 0x238fc3);
+      player.drones.forEach((drone, number) => {
+        const row = Math.floor(number / 5), column = number % 5;
+        marker(side + direction * (1.2 + row * 0.72), -1.5 + column * 0.75, 0x59636e, 0.28);
+      });
+      player.shields.forEach((shield, number) => {
+        const row = Math.floor(number / 5), column = number % 5;
+        marker(side + direction * (0.85 + row * 0.5), -1.25 + column * 0.63, 0x77aee0, 0.22);
+      });
     });
   }
   tick() { requestAnimationFrame(() => this.tick()); this.renderer.render(this.scene, this.camera); }

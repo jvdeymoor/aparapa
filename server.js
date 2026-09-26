@@ -7,6 +7,7 @@ import { newGame, act, endTurn } from './src/game/engine.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://aparapa.com,https://www.aparapa.com').split(',').map(value => value.trim());
 const CONFIG = { RULES:{ CORE_INTEGRITY:20, STARTING_HAND:5, DECK_SIZE:40, MAX_HAND:8, MOVES_PER_TURN:2, START_ENERGY:3, START_MAX_ENERGY:3, ENERGY_EVERY_TURNS:3, ABSOLUTE_MAX_ENERGY:7, BRISCOLE_EVERY_ROUNDS:5, DOMINION_THRESHOLD:10, DOMINION_TURNS_TO_WIN:3, MAX_MAGIFICATE:2, DRAW_PER_TURN:1 } };
 const memory = new Map();
 let collection;
@@ -37,6 +38,9 @@ async function staticFile(req, res) {
   try { if (!(await stat(path)).isFile()) throw Error(); res.writeHead(200, { 'content-type':mime[extname(path)] || 'application/octet-stream' }); res.end(await readFile(path)); } catch { json(res, 404, { error:'File non trovato' }); }
 }
 const server = createServer(async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) { res.setHeader('access-control-allow-origin', origin); res.setHeader('vary', 'Origin'); }
+  if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-methods':'GET,POST,OPTIONS', 'access-control-allow-headers':'content-type,authorization' }); return res.end(); }
   try {
     const url = new URL(req.url, `http://${req.headers.host}`), parts = url.pathname.split('/').filter(Boolean);
     if (req.method === 'POST' && url.pathname === '/api/games') {

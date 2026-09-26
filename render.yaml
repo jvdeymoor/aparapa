@@ -8,3 +8,5 @@ services:
     envVars:
       - key: MONGODB_URI
         sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://aparapa.com,https://www.aparapa.com

@@ -7,7 +7,8 @@ URL="http://127.0.0.1:${PORT}/index.html"
 
 # Se il server esiste già, riusa quello; altrimenti avvialo in locale.
 if ! curl --silent --fail "$URL" >/dev/null 2>&1; then
-  (cd "$GAME_DIR" && python3 -m http.server "$PORT" --bind 127.0.0.1 > .neon-war-server.log 2>&1 &)
+  # 0.0.0.0 rende il gioco disponibile solo ai dispositivi della stessa rete Wi-Fi.
+  (cd "$GAME_DIR" && nohup python3 -m http.server "$PORT" --bind 0.0.0.0 > .neon-war-server.log 2>&1 < /dev/null &)
   sleep 1
 fi
 

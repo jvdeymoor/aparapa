@@ -1,0 +1,3 @@
+export class LocalGameAdapter{constructor(key='neon-war-save-v1'){this.key=key}load(){try{return JSON.parse(localStorage.getItem(this.key))}catch{return null}}save(state){localStorage.setItem(this.key,JSON.stringify(state))}clear(){localStorage.removeItem(this.key)}export(state){return JSON.stringify(state,null,2)}import(text){const s=JSON.parse(text);if(s.saveVersion!==1)throw Error('Versione salvataggio non supportata');return s}}
+// Futuro contratto Node: load(gameId), submitAction({gameId,playerId,turnId,actionId,action}), sync(checksum).
+export class NodeGameAdapter{async load(){throw Error('NodeGameAdapter non configurato')}async submitAction(){throw Error('Server Node non configurato')}}

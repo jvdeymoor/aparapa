@@ -28,9 +28,16 @@ export class TableRenderer {
     this.scene.add(this.units);
     this.installPointerControls();
     addEventListener('resize', () => this.resize());
+    addEventListener('orientationchange', () => {
+      // In orizzontale la vista deve sempre ricominciare centrata e completa.
+      requestAnimationFrame(() => { this.resize(); this.resetView(); this.syncTouchMode(); });
+    });
     this.resize();
+    this.syncTouchMode();
     this.tick();
   }
+  isLandscapePhone() { return matchMedia('(max-width:600px) and (orientation:landscape)').matches; }
+  syncTouchMode() { this.renderer.domElement.style.touchAction = this.isLandscapePhone() ? 'auto' : 'none'; }
   resize() {
     const width = this.el.clientWidth, height = this.el.clientHeight || 300, aspect = width / height, vertical = 9;
     this.camera.left = -(vertical * aspect) / 2;
@@ -56,9 +63,12 @@ export class TableRenderer {
   }
   installPointerControls() {
     const canvas = this.renderer.domElement;
-    canvas.style.touchAction = 'none';
     let origin = null;
-    canvas.addEventListener('pointerdown', event => { origin = { x: event.clientX, y: event.clientY, target: this.target.clone() }; canvas.setPointerCapture(event.pointerId); });
+    canvas.addEventListener('pointerdown', event => {
+      if (this.isLandscapePhone()) return;
+      origin = { x: event.clientX, y: event.clientY, target: this.target.clone() };
+      canvas.setPointerCapture(event.pointerId);
+    });
     canvas.addEventListener('pointermove', event => {
       if (!origin || !canvas.hasPointerCapture(event.pointerId)) return;
       const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;

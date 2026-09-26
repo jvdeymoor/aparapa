@@ -8,12 +8,15 @@ export class TableRenderer {
     this.scene.background = new THREE.Color(0x182234);
     this.target = new THREE.Vector3(0, 0, 0);
     this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
-    this.camera.position.set(0, 18, 0.01);
+    this.camera.position.set(0, 11, 10);
     this.camera.lookAt(this.target);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.append(this.renderer.domElement);
 
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshBasicMaterial({ color: 0x193454 }));
+    slab.position.y = -0.15;
+    this.scene.add(slab);
     const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshBasicMaterial({ color: 0xdde8f5 }));
     field.rotation.x = -Math.PI / 2;
     this.scene.add(field);
@@ -39,7 +42,7 @@ export class TableRenderer {
   }
   resetView() {
     this.target.set(0, 0, 0);
-    this.camera.position.set(0, 18, 0.01);
+    this.camera.position.set(0, 11, 10);
     this.camera.zoom = 1;
     this.camera.lookAt(this.target);
     this.camera.updateProjectionMatrix();
@@ -48,7 +51,7 @@ export class TableRenderer {
     this.target.x += horizontal;
     this.target.z += vertical;
     this.camera.position.x = this.target.x;
-    this.camera.position.z = this.target.z + 0.01;
+    this.camera.position.z = this.target.z + 10;
     this.camera.lookAt(this.target);
   }
   installPointerControls() {
@@ -59,8 +62,8 @@ export class TableRenderer {
     canvas.addEventListener('pointermove', event => {
       if (!origin || !canvas.hasPointerCapture(event.pointerId)) return;
       const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
-      this.target.set(origin.target.x - (event.clientX - origin.x) * scale, 0, origin.target.z + (event.clientY - origin.y) * scale);
-      this.camera.position.set(this.target.x, 18, this.target.z + 0.01);
+      this.target.set(origin.target.x - (event.clientX - origin.x) * scale, 0, origin.target.z - (event.clientY - origin.y) * scale);
+      this.camera.position.set(this.target.x, 11, this.target.z + 10);
       this.camera.lookAt(this.target);
     });
     canvas.addEventListener('pointerup', () => { origin = null; });

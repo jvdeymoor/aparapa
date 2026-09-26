@@ -6,16 +6,18 @@ export class TableRenderer {
     this.el = element;
     this.C = config;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#0b1c3e');
+    this.scene.background = new THREE.Color('#1b427e');
     this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
+    this.target = new THREE.Vector3(0, 0, 0);
     this.camera.position.set(0, 13, 11);
-    this.camera.lookAt(0, 0, 0);
+    this.camera.lookAt(this.target);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.append(this.renderer.domElement);
-    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: '#193b78' }));
+    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: '#3979c9' }));
     table.position.y = -0.25;
     this.scene.add(table);
+    this.installTouchControls();
     this.group = new THREE.Group();
     this.scene.add(this.group);
     addEventListener('resize', () => this.resize());
@@ -30,6 +32,34 @@ export class TableRenderer {
     this.camera.bottom = -vertical / 2;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+  installTouchControls() {
+    const canvas = this.renderer.domElement;
+    canvas.style.touchAction = 'none';
+    let start = null;
+    const point = touch => new THREE.Vector2(touch.clientX, touch.clientY);
+    canvas.addEventListener('touchstart', event => {
+      const touches = [...event.touches].map(point);
+      start = { touches, zoom: this.camera.zoom, target: this.target.clone() };
+    }, { passive: true });
+    canvas.addEventListener('touchmove', event => {
+      if (!start) return;
+      event.preventDefault();
+      const touches = [...event.touches].map(point);
+      if (touches.length === 2 && start.touches.length === 2) {
+        const oldDistance = start.touches[0].distanceTo(start.touches[1]);
+        const newDistance = touches[0].distanceTo(touches[1]);
+        this.camera.zoom = THREE.MathUtils.clamp(start.zoom * (newDistance / oldDistance), 0.7, 2.4);
+        this.camera.updateProjectionMatrix();
+      } else if (touches.length === 1 && start.touches.length === 1) {
+        const delta = touches[0].clone().sub(start.touches[0]);
+        const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
+        this.target.set(start.target.x - delta.x * scale, 0, start.target.z + delta.y * scale);
+        this.camera.position.set(this.target.x, 13, this.target.z + 11);
+        this.camera.lookAt(this.target);
+      }
+    }, { passive: false });
+    canvas.addEventListener('touchend', () => { start = null; }, { passive: true });
   }
   update(state) {
     this.group.clear();

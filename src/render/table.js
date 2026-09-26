@@ -37,6 +37,20 @@ export class TableRenderer {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
+  resetView() {
+    this.target.set(0, 0, 0);
+    this.camera.position.set(0, 18, 0.01);
+    this.camera.zoom = 1;
+    this.camera.lookAt(this.target);
+    this.camera.updateProjectionMatrix();
+  }
+  pan(horizontal, vertical = 0) {
+    this.target.x += horizontal;
+    this.target.z += vertical;
+    this.camera.position.x = this.target.x;
+    this.camera.position.z = this.target.z + 0.01;
+    this.camera.lookAt(this.target);
+  }
   installPointerControls() {
     const canvas = this.renderer.domElement;
     canvas.style.touchAction = 'none';

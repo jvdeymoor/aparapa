@@ -12,9 +12,10 @@ export class TableRenderer {
     this.camera.position.set(0, 13, 11);
     this.camera.lookAt(this.target);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     element.append(this.renderer.domElement);
-    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: '#62a6f5' }));
+    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: 0x65b7ff, side: THREE.DoubleSide }));
     table.position.y = -0.25;
     this.scene.add(table);
     const grid = new THREE.GridHelper(config.TABLE.WIDTH - 0.5, 12, 0xd9f4ff, 0x316bb4);

@@ -55,8 +55,15 @@ const server = createServer(async (req, res) => {
     }
     if (parts[0] === 'api' && parts[1] === 'games' && parts[2]) {
       const game = await load(parts[2]); if (!game) return json(res, 404, { error:'Partita non trovata' });
+      if (game.closedMessage) return json(res, 410, { error:game.closedMessage });
       const player = playerOf(game, req.headers.authorization?.replace('Bearer ', '')); if (player < 0) return json(res, 401, { error:'Accesso non valido' });
       if (req.method === 'GET') return json(res, 200, publicState(game, player));
+      if (req.method === 'POST' && parts[3] === 'leave') {
+        game.closedMessage = `P${player + 1} è uscito dalla partita.`;
+        game.state = null; game.deckCounts = null; game.tokens = [];
+        game.updatedAt = new Date(); await save(game);
+        return json(res, 200, { ok:true });
+      }
       if (req.method === 'POST' && parts[3] === 'action') {
         if (!game.tokens[1] || !game.state) return json(res, 409, { error:'In attesa del secondo giocatore' });
         if (game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });

@@ -1,2 +1,49 @@
-import*as THREE from'../../vendor/three.module.min.js';
-export class TableRenderer{constructor(el,C){this.el=el;this.C=C;this.scene=new THREE.Scene();this.scene.fog=new THREE.Fog(0x050817,8,21);this.camera=new THREE.PerspectiveCamera(C.CAMERA.FOV,1,.1,50);this.camera.position.set(C.CAMERA.X,C.CAMERA.Y,C.CAMERA.Z);this.camera.lookAt(0,0,0);this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));el.append(this.renderer.domElement);let t=new THREE.Mesh(new THREE.BoxGeometry(C.TABLE.WIDTH,.4,C.TABLE.HEIGHT),new THREE.MeshStandardMaterial({color:C.COLORS.TABLE,metalness:.7,roughness:.35}));t.position.y=-.4;this.scene.add(t,new THREE.AmbientLight(0x526ea8,1.5));let l=new THREE.PointLight(C.LIGHTS.COLOR,C.LIGHTS.INTENSITY,C.LIGHTS.DISTANCE);l.position.set(C.LIGHTS.X,C.LIGHTS.Y,C.LIGHTS.Z);this.scene.add(l);this.group=new THREE.Group();this.scene.add(this.group);addEventListener('resize',()=>this.resize());this.resize();this.tick() }resize(){let w=this.el.clientWidth,h=this.el.clientHeight||300;this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h)}update(s){this.group.clear();let add=(x,z,color,scale=1)=>{let m=new THREE.Mesh(new THREE.CylinderGeometry(.42*scale,.55*scale,.18,6),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.25,metalness:.7}));m.position.set(x,0,z);this.group.add(m)};s.players.forEach((p,i)=>{let z=i?-2.4:2.4;add(0,z,i?0xff4c9a:0x37e9ff,1.4);p.drones.forEach((d,n)=>add(-3+n*.85,z,i?0xffca4f:0x54d6ff,.55));p.shields.forEach((d,n)=>add(3-n*.7,z,0x54d6ff,.4))});this.group.rotation.y=Math.sin(performance.now()/4000)*.06}tick(){requestAnimationFrame(()=>this.tick());this.renderer.render(this.scene,this.camera)}}
+import * as THREE from '../../vendor/three.module.min.js';
+
+// Arena tattica: ortografica per mantenere i due lati simmetrici su ogni schermo.
+export class TableRenderer {
+  constructor(element, config) {
+    this.el = element;
+    this.C = config;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color('#0b1c3e');
+    this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
+    this.camera.position.set(0, 13, 11);
+    this.camera.lookAt(0, 0, 0);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    element.append(this.renderer.domElement);
+    const table = new THREE.Mesh(new THREE.BoxGeometry(config.TABLE.WIDTH, 0.35, config.TABLE.HEIGHT), new THREE.MeshBasicMaterial({ color: '#193b78' }));
+    table.position.y = -0.25;
+    this.scene.add(table);
+    this.group = new THREE.Group();
+    this.scene.add(this.group);
+    addEventListener('resize', () => this.resize());
+    this.resize();
+    this.tick();
+  }
+  resize() {
+    const width = this.el.clientWidth, height = this.el.clientHeight || 300, aspect = width / height, vertical = 9;
+    this.camera.left = -(vertical * aspect) / 2;
+    this.camera.right = (vertical * aspect) / 2;
+    this.camera.top = vertical / 2;
+    this.camera.bottom = -vertical / 2;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height);
+  }
+  update(state) {
+    this.group.clear();
+    const add = (x, z, color, scale = 1) => {
+      const unit = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * scale, 0.55 * scale, 0.18, 6), new THREE.MeshBasicMaterial({ color }));
+      unit.position.set(x, 0, z);
+      this.group.add(unit);
+    };
+    state.players.forEach((player, index) => {
+      const side = index ? 2.7 : -2.7;
+      add(side, 0, index ? 0xff354c : 0x37e9ff, 1.4);
+      player.drones.forEach((drone, number) => add(side + (index ? -0.8 : 0.8), -0.9 + number * 0.7, 0xf6c84b, 0.55));
+      player.shields.forEach((shield, number) => add(side + (index ? -0.7 : 0.7), 0.9 - number * 0.55, 0x54d6ff, 0.4));
+    });
+  }
+  tick() { requestAnimationFrame(() => this.tick()); this.renderer.render(this.scene, this.camera); }
+}

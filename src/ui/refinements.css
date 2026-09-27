@@ -265,9 +265,9 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
 
 /* Desktop and landscape only. Portrait touch/mobile remains the v1.4 reference. */
 @media (orientation: landscape), (min-width: 601px) and (pointer: fine) {
-  body { zoom: 1 !important; padding: 0 !important; overflow: hidden !important; }
+  body { zoom: 1 !important; padding: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; }
   #modalRoot { zoom: 1 !important; }
-  #app { width: 100%; max-width: 1600px; margin: 0 auto; height: 100dvh !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden; }
+  #app { width: 100%; max-width: none; margin: 0 auto; height: auto !important; min-height: 100dvh !important; display: flex !important; flex-direction: column !important; overflow: visible; container-type: inline-size; }
   header { flex: 0 0 76px !important; min-height: 76px !important; padding: 8px 10px !important; gap: 6px; align-items: flex-start; background: #070b1df5; z-index: 5; }
   header .brand { flex: 1; font-size: 21px; line-height: 1.1; }
   .brand small { display: none; }
@@ -308,22 +308,8 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
   .rules, .rules p, .rules li, #modalLog p { font-size: 16px !important; line-height: 1.35 !important; }
 }
 
-/* Short landscape screens retain every game band and give the lists their own scrolling. */
+/* Dialogs still fit the physical viewport; the game page scrolls behind them. */
 @media (orientation: landscape) and (max-height: 600px) {
-  header { flex-basis: 54px !important; min-height: 54px !important; padding-top: 4px !important; }
-  header .brand { font-size: 17px; }
-  #turnStatus { top: 29px; height: 21px; }
-  header > #rulesButton, header > #menuButton { height: 42px !important; min-height: 42px !important; }
-  #briscolaBanner { flex-basis: 26px !important; height: 26px !important; margin-top: 0 !important; }
-  main { grid-template-rows: minmax(0,3fr) minmax(0,2fr); }
-  footer { flex-basis: clamp(110px,30dvh,170px) !important; }
-  #actions { flex-basis: 36px !important; min-height: 36px !important; padding: 2px 0 !important; }
-  #endTurn { min-height: 32px !important; padding: 5px 12px; }
-  #hand .card > .card-energy { top: 2px; right: 2px; padding: 1px; font-size: 10px !important; }
-  #hand .card-energy em { font-size: 11px; }
-  #hand .card > span { top: 3px; left: 3px; }
-  #hand .card > b { font-size: clamp(8px,12cqh,16px) !important; }
-  #arena #centerHud .core-hud { font-size: 11px !important; }
   #modalRoot [data-kind="preparation"] article { width: min(960px,100%); max-width: 960px; }
   .preparation-screen { display: grid; grid-template-columns: minmax(0,3fr) minmax(0,2fr); grid-template-rows: auto auto minmax(0,1fr) auto auto; gap: 6px 12px; }
   .preparation-screen h2 { grid-area: 1 / 1 / 2 / 3; }
@@ -332,4 +318,41 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
   .preparation-help { grid-area: 3 / 2; align-self: center; }
   .preparation-status { grid-area: 4 / 2; }
   #readyPreparation { grid-area: 5 / 2; }
+}
+
+/* Scale the portrait reference (390x730 CSS px of game area) to the available width.
+   31% arena + 24% player panels; page height is deliberately independent of screen height. */
+@media (orientation: landscape), (min-width: 601px) and (pointer: fine) {
+  header { position: relative; flex: 0 0 19.487cqw !important; min-height: 19.487cqw !important; padding: 2.05cqw 2.56cqw !important; gap: 1.54cqw; }
+  header .brand { font-size: 5.385cqw; }
+  #turnStatus { top: 12.308cqw; left: 4.103cqw; right: 3.077cqw; height: 6.154cqw; }
+  #turnStatus #turnBanner { font-size: 3.59cqw !important; }
+  header > #rulesButton, header > #menuButton { min-width: 13.846cqw !important; height: 11.282cqw !important; min-height: 11.282cqw !important; font-size: 7.692cqw !important; }
+  #briscolaBanner { flex: 0 0 8.462cqw !important; height: 8.462cqw !important; margin-top: .769cqw !important; padding: 0 3.077cqw; }
+  #briscolaBanner, #briscolaBanner span, #briscolaBanner b { font-size: 3.59cqw !important; }
+  main { flex: none !important; display: block !important; height: auto !important; padding: .769cqw 2.051cqw !important; overflow: visible; }
+  #arena { height: 58.026cqw !important; min-height: 0 !important; }
+  #mobileStatus { height: 44.923cqw !important; grid-template-columns: minmax(0,1fr) 6.154cqw minmax(0,1fr) !important; padding: 1.026cqw 2.051cqw !important; gap: 1.282cqw !important; }
+  .mobile-player { padding: 1.795cqw; }
+  .mobile-list { gap: .513cqw; margin-top: 1.282cqw; font-size: max(18px,3.333cqw); }
+  .mobile-list span, .mobile-list button, .mobile-list b { font-size: max(18px,3.333cqw); }
+  .mobile-list .unit-row { min-height: 18.462cqw !important; padding: 1.538cqw .513cqw !important; }
+  .mobile-list .unit-row .unit-label { font-size: max(18px,3.333cqw) !important; line-height: 1.2 !important; }
+  .vs { font-size: 2.821cqw; }
+  footer { flex: none !important; height: 55.513cqw !important; padding: 0 2.051cqw !important; }
+  #hand { gap: 1.795cqw; padding: 1.026cqw 0 !important; }
+  #hand .card > .card-energy { font-size: max(12px,9cqh) !important; }
+  #hand .card-energy em { font-size: max(14px,10cqh); }
+  #hand .card > span { font-size: max(12px,9cqh) !important; }
+  #hand .card > b { font-size: max(14px,12cqh) !important; }
+  #actions { flex: 0 0 13.846cqw !important; min-height: 13.846cqw !important; padding: 1.282cqw 0 1.795cqw !important; }
+  #endTurn { min-height: 10.769cqw !important; font-size: 3.846cqw; }
+  #arena #centerHud .core-hud { font-size: 3.59cqw !important; }
+  #arena #centerHud .hud-divider { font-size: 2.564cqw; }
+  #arena #centerHud { inset: 1.795cqw 1.538cqw auto; }
+  #arena #arenaControls button, #arena .camera-mode, #arena .expand-player { width: 8.718cqw; height: 8.205cqw; font-size: 5.128cqw; }
+  #arena .camera-mode svg { width: 5.128cqw; height: 5.128cqw; }
+  #arena #arenaControls, #arena .expand-player { bottom: 2.564cqw; }
+  #behindCamera, #expandPlayer1 { left: 3.077cqw; }
+  #standardCamera, #expandPlayer2 { right: 3.077cqw; }
 }

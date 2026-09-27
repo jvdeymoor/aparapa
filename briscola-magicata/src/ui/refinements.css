@@ -356,3 +356,10 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
   #behindCamera, #expandPlayer1 { left: 3.077cqw; }
   #standardCamera, #expandPlayer2 { right: 3.077cqw; }
 }
+
+/* Browser zoom can scale this fixed CSS width; only wide layouts consume it. */
+@media (orientation: landscape), (min-width: 601px) and (pointer: fine) {
+  body { overflow-x: auto !important; }
+  #app { width: var(--wide-layout-width,75%); max-width: none; }
+  #arenaView canvas { touch-action: pinch-zoom !important; }
+}

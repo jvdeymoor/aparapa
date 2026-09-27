@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { MongoClient } from 'mongodb';
-import { newGame, act, endTurn, settleTurn } from './src/game/engine.js';
+import { newGame, act, endTurn, settleTurn, isPreparing, readyPreparation } from './src/game/engine.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -29,7 +29,7 @@ function playerOf(game, accessToken) { return game.tokens.findIndex(value => val
 function publicState(game, player) {
   if (!game.state) return { code:game.code, joined:false, player, waiting:true };
   const state = structuredClone(game.state);
-  state.players.forEach((p, index) => { if (index !== player) { p.hand = p.hand.map(() => 'hidden'); p.deck = Array(p.deck.length).fill('hidden'); } });
+  state.players.forEach((p, index) => { if (index !== player) { p.hand = p.hand.map(() => 'hidden'); if(p.openingHand)p.openingHand=p.openingHand.map(()=>'hidden'); p.deck = Array(p.deck.length).fill('hidden'); } });
   return { code:game.code, joined:!!game.tokens[1], player, state };
 }
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.svg':'image/svg+xml', '.glb':'model/gltf-binary' };
@@ -38,12 +38,21 @@ async function staticFile(req, res) {
   if (!path.startsWith(process.cwd())) return json(res, 403, { error:'Percorso non consentito' });
   try { if (!(await stat(path)).isFile()) throw Error(); res.writeHead(200, { 'content-type':mime[extname(path)] || 'application/octet-stream' }); res.end(await readFile(path)); } catch { json(res, 404, { error:'File non trovato' }); }
 }
+const roomLocks=new Map();
+async function lockRoom(code){
+  const previous=roomLocks.get(code)||Promise.resolve();let unlock;
+  const current=new Promise(resolve=>unlock=resolve);roomLocks.set(code,current);
+  await previous;
+  return ()=>{unlock();if(roomLocks.get(code)===current)roomLocks.delete(code)};
+}
 const server = createServer(async (req, res) => {
   const origin = req.headers.origin;
   if (origin && ALLOWED_ORIGINS.includes(origin)) { res.setHeader('access-control-allow-origin', origin); res.setHeader('vary', 'Origin'); }
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-methods':'GET,POST,OPTIONS', 'access-control-allow-headers':'content-type,authorization' }); return res.end(); }
+  let unlock;
   try {
     const url = new URL(req.url, `http://${req.headers.host}`), parts = url.pathname.split('/').filter(Boolean);
+    if(parts[0]==='api'&&parts[1]==='games'&&parts[2])unlock=await lockRoom(parts[2]);
     if (req.method === 'POST' && url.pathname === '/api/games') {
       const input = await body(req), game = { code:code(), tokens:[token(), null], deckCounts:[input.deckCounts, null], state:null, createdAt:new Date(), updatedAt:new Date() };
       await save(game); return json(res, 201, { code:game.code, accessToken:game.tokens[0], player:0 });
@@ -69,17 +78,22 @@ const server = createServer(async (req, res) => {
       }
       if (req.method === 'POST' && parts[3] === 'action') {
         if (!game.tokens[1] || !game.state) return json(res, 409, { error:'In attesa del secondo giocatore' });
-        if (game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });
-        const input = await body(req); game.state = act(game.state, CONFIG, input.action); game.updatedAt = new Date(); await save(game); return json(res, 200, publicState(game, player));
+        if (!isPreparing(game.state) && game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });
+        const input = await body(req); game.state = act(game.state, CONFIG, input.action, player); game.updatedAt = new Date(); await save(game); return json(res, 200, publicState(game, player));
+      }
+      if (req.method === 'POST' && parts[3] === 'ready') {
+        if (!game.state) return json(res,409,{error:'In attesa del secondo giocatore'});
+        game.state=readyPreparation(game.state,CONFIG,player);game.updatedAt=new Date();await save(game);
+        return json(res,200,publicState(game,player));
       }
       if (req.method === 'POST' && parts[3] === 'end-turn') {
         if (!game.tokens[1] || !game.state) return json(res, 409, { error:'In attesa del secondo giocatore' });
-        if (game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });
+        if (!isPreparing(game.state) && game.state.active !== player) return json(res, 409, { error:'Non è il tuo turno' });
         game.state = endTurn(game.state, CONFIG); game.updatedAt = new Date(); await save(game); return json(res, 200, publicState(game, player));
       }
     }
     return staticFile(req, res);
-  } catch (error) { console.error(error); json(res, 400, { error:error.message || 'Richiesta non valida' }); }
+  } catch (error) { console.error(error); json(res, 400, { error:error.message || 'Richiesta non valida' }); } finally { unlock?.(); }
 });
 await initStore();
 server.listen(PORT, '0.0.0.0', () => console.log(`BRISCOLA MAGICATA multiplayer su :${PORT}`));

@@ -1,3 +1,4 @@
+import {configureArenaModel,createArenaSun} from './materials.js';
 import { SpaceBackdrop, FORMATION_DISTANCE, ZOOM_LIMITS } from './space.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import * as THREE from '../../vendor/three.module.min.js';
@@ -19,15 +20,9 @@ export class TableRenderer {
     element.append(this.renderer.domElement);
 
     this.space = new SpaceBackdrop(this.scene);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-    this.spot = new THREE.SpotLight(0xffffff, 80, 60, 0.9, 0.35, 1.3);
-    this.spot.position.set(0, 13.8, 0);
-    this.spot.castShadow = true;
-    this.spot.shadow.mapSize.set(1024, 1024);
-    this.spot.shadow.bias = -.0003;
-    this.spot.shadow.normalBias = .03;
-    this.spot.target.position.set(0, 0, 0);
-    this.scene.add(this.spot, this.spot.target);
+    this.scene.add(new THREE.AmbientLight(0xffffff, .3));
+    this.sun=createArenaSun();
+    this.scene.add(this.sun,this.sun.target);
     this.units = new THREE.Group();
     this.orbiters = [];
     this.floaters = [];
@@ -36,6 +31,7 @@ export class TableRenderer {
     this.scene.add(this.units);
     this.installPointerControls();
     addEventListener('resize', () => this.resize());
+    this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(element);
     addEventListener('orientationchange', () => {
       // In orizzontale la vista deve sempre ricominciare centrata e completa.
       requestAnimationFrame(() => { this.resize(); this.resetView(); this.syncTouchMode(); });
@@ -111,8 +107,7 @@ export class TableRenderer {
         const bounds=new THREE.Box3().setFromObject(wrapper),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
         scene.position.sub(center);
         wrapper.scale.setScalar((family==='citadel'?2.1:family==='drone'?.8:.6)/Math.max(size.x,size.y,size.z));
-        const accents={shield:0x0fa7ef,virus:0xbf1014,drone:0xffed9a,radiation:0x4cdd4d,magicata:0xe870e9};
-        scene.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=true;mesh.receiveShadow=true;const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];materials.forEach(mat=>{if(accents[family]&&mat.color){const hsl={};mat.color.getHSL(hsl);if(hsl.s>.3){mat.color.setHex(accents[family]);if(mat.emissive?.getHex())mat.emissive.setHex(accents[family])}}})});
+        configureArenaModel(scene,family);
         this.models.set(`${family}-${i}`,wrapper);
       })));
       if(this.lastState){this.stateSignature=null;this.update(this.lastState)}

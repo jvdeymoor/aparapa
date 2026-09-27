@@ -48,8 +48,11 @@ export class SpaceBackdrop {
     // Start with shadow-catching rocks directly below both formations.
     this.asteroids[0].mesh.position.set(-FORMATION_DISTANCE, -2.4, 0);
     this.asteroids[1].mesh.position.set(FORMATION_DISTANCE, -2.4, 0);
+    this.time=0;
+    this.asteroids.slice(0,2).forEach((rock,i)=>{rock.anchor=(i?1:-1)*FORMATION_DISTANCE;rock.mesh.scale.set(3.2,.7,2.8)});
   }
   update(dt, camera) {
+    this.time+=dt;
     for (let i = 0; i < this.positions.length; i += 3) {
       this.positions[i] -= dt * .009;
       this.positions[i + 1] -= dt * .004;
@@ -62,6 +65,12 @@ export class SpaceBackdrop {
     this.stars.quaternion.copy(camera.quaternion);
     this.stars.scale.set((camera.right - camera.left) / (2 * camera.zoom), (camera.top - camera.bottom) / (2 * camera.zoom), 1);
     for (const rock of this.asteroids) {
+      if(rock.anchor!==undefined){
+        rock.mesh.position.x=rock.anchor+Math.sin(this.time*.08)*.2;
+        rock.mesh.position.z=Math.cos(this.time*.07)*.2;
+        rock.mesh.rotation.y+=rock.spin*dt;
+        continue;
+      }
       rock.mesh.position.x += rock.vx * dt;
       rock.mesh.position.z += rock.vz * dt;
       rock.mesh.rotation.y += rock.spin * dt;

@@ -245,3 +245,12 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
 #arena .camera-mode { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 32px; padding: 0; z-index: 4; background: #0b2458e8; color: #eaf5ff; font-size: 22px; }
 #behindCamera { left: 12px; }
 #standardCamera { right: 12px; }
+
+/* v1.2: compact HUD with a truly centered separator, both strings read left to right. */
+#arena #centerHud { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 0; }
+#arena #centerHud .core-hud { gap: 0; justify-content: flex-start; text-align: left; letter-spacing: 0; }
+#arena #centerHud .hud-divider { align-self: center; text-align: center; font-size: 10px; line-height: 1; color: #f5ca56; background: #0008; }
+.mobile-list .radiation-count { font-size: calc(1em + 2px) !important; }
+.stats .radiation-count { font-size: calc(1em + 2px); }
+#arena .camera-mode { display: grid; place-items: center; line-height: 1; }
+#arena .camera-mode svg { display: block; width: 20px; height: 20px; pointer-events: none; }

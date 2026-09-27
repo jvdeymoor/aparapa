@@ -1,0 +1,163 @@
+/* Final overrides: keep existing game bands, player panel sizes and text scale. */
+#modalRoot .modal {
+  position: fixed;
+  inset: 0 !important;
+  z-index: 100;
+  margin: 0;
+  width: auto;
+  height: auto;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+  background: #02040bd9;
+  overscroll-behavior: contain;
+}
+#modalRoot .modal article {
+  width: min(700px, 100%);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  min-height: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+#modalRoot [data-kind="lobby"] article { text-align: center; }
+#lobbyRules { display: block; margin: 10px auto 24px; min-width: 48px; min-height: 48px; font-size: 28px; }
+#modalRoot [data-kind="online-deck"] article {
+  display: flex;
+  flex-direction: column;
+  height: min(780px, calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  overflow: hidden;
+  padding: 16px;
+}
+#modalRoot .online-deck-builder {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+#modalRoot .online-deck-builder h2 { flex: none; font-size: 21px; margin: 0 0 8px; }
+#modalRoot .online-deck-builder p { flex: none; font-size: 16px; line-height: 1.3; margin: 4px 0 8px; }
+#modalRoot .online-deck-builder .deck-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 4px 0 0;
+  padding-right: 4px;
+  align-content: start;
+}
+#modalRoot .online-deck-builder label { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 10px; font-size: 18px; }
+#modalRoot .online-deck-builder label small { display: block; font-size: 12px; }
+#modalRoot .deck-stepper { grid-template-columns: 40px 54px 40px; gap: 4px; }
+#modalRoot .deck-stepper input { width: 54px; min-width: 0; padding: 6px 2px; font-size: 20px; }
+#modalRoot .deck-stepper button { min-height: 42px; font-size: 28px; }
+#modalRoot .deck-stepper button:disabled { opacity: .22; background: #0b1428; border-color: #28364c; cursor: default; }
+#modalRoot .deck-stepper.fixed-count { grid-template-columns: 54px; justify-content: center; width: 142px; }
+.deck-footer { flex: none; padding-top: 10px; background: #101a37; border-top: 1px solid #375783; }
+#modalRoot #onlineDeckTotal { font-weight: bold; margin: 0 0 8px; }
+#onlineDeckError:empty { display: none; }
+#onlineDeckError { color: #ff6573; }
+.deck-actions { display: flex; gap: 8px; }
+.deck-actions button { flex: 1; min-width: 0; min-height: 44px; }
+
+/* The two labels stay at the bar's left and right edges. */
+#briscolaBanner {
+  position: relative;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 0 12px;
+  border-bottom: 1px solid #264277;
+  color: #f5c65c;
+  font: 11px monospace;
+}
+#briscolaBanner > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#briscolaBanner > b { margin-left: auto; color: #8bd8ff; font-weight: normal; white-space: nowrap; }
+#turnStatus { display: flex; align-items: center; gap: 8px; min-width: 0; margin-left: auto; }
+#turnStatus #turnBanner { position: static !important; margin: 0 !important; width: auto !important; min-width: 0; white-space: nowrap; }
+#turnStatus #onlineButton {
+  position: static;
+  flex: none;
+  margin: 0;
+  padding: 3px 5px !important;
+  min-height: 24px !important;
+  min-width: 0 !important;
+  font-size: 10px !important;
+  line-height: 1.1;
+}
+header { position: relative; display: flex; flex-wrap: nowrap !important; align-items: center; }
+header .brand { min-width: 0; }
+header > #rulesButton, header > #menuButton { display: block !important; flex: 0 0 auto; }
+header > #rulesButton { margin-left: auto; }
+header > #menuButton { margin-left: 2px !important; }
+header nav {
+  display: none;
+  position: absolute;
+  top: 100%; right: 8px;
+  width: 200px;
+  padding: 8px;
+  background: #0b1230;
+  border: 1px solid #4266a8;
+  grid-template-columns: 1fr;
+  z-index: 20;
+}
+header.menu-open nav { display: grid; }
+header nav #logButton { display: block !important; min-width: 0 !important; min-height: 44px !important; padding: 9px 12px !important; margin: 0; font: 700 16px monospace !important; order: 0; }
+header nav [data-modal="rules"] { display: none !important; }
+@media (max-width: 600px), (pointer: coarse) {
+  header { align-items: flex-start; padding-top: 4px !important; min-height: 76px !important; }
+  header .brand { flex: 1; }
+  header > #rulesButton, header > #menuButton { min-height: 44px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+  #turnStatus { position: absolute; left: 16px; right: 12px; top: 48px; margin: 0; height: 24px; }
+  #turnStatus #turnBanner { flex: 0 1 auto; font-size: 11px; }
+}
+
+#hand .card > .card-energy {
+  position: absolute;
+  top: 8px; right: 7px;
+  margin: 0;
+  padding: 3px;
+  background: #050817cc;
+  color: #fff;
+  font: 700 15px monospace !important;
+  line-height: 1.1;
+  text-shadow: 0 1px 3px #000;
+}
+#hand .card > span { position: absolute; top: 8px; left: 7px; line-height: 1.1; }
+#hand .card > b { margin-top: auto; }
+.card-energy em { font-style: normal; font-size: 18px; }
+.card-energy .energy-ready { color: #48ff39; }
+.card-energy .energy-low { color: #ff293d; }
+/* Unit sprites share the full row height; text stays above the image. */
+.unit-row { position: relative; isolation: isolate; overflow: hidden; min-height: 60px; width: 100%; text-align: left; }
+.unit-row .unit-label { position: relative; z-index: 1; padding: 0 !important; background: transparent !important; color: inherit; white-space: normal; text-shadow: 0 1px 3px #02040b; }
+.unit-row .unit-art {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  height: 100%; aspect-ratio: 120 / 187;
+  padding: 0 !important;
+  border: 0;
+  pointer-events: none;
+  opacity: .72;
+  z-index: 0;
+}
+#modalRoot .unit-article { position: relative; isolation: isolate; overflow: auto; }
+.unit-popup-art {
+  position: absolute; right: 0; top: 0;
+  height: 100%; aspect-ratio: 120 / 187;
+  z-index: -1; pointer-events: none; opacity: .6;
+}
+.unit-detail { position: relative; text-shadow: 0 1px 4px #000; }
+#arena { isolation: isolate; background: #02040b !important; }
+#arenaFrame { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+#centerHud { z-index: 3; }
+#arenaControls { position: absolute; right: 12px; bottom: 10px; z-index: 4; display: flex; gap: 3px; }
+#arenaControls button { width: 34px; height: 32px; padding: 0; background: #0b2458e8; color: #eaf5ff; font-size: 20px; }
+@media (max-height: 480px) {
+  #modalRoot .online-deck-builder h2 { font-size: 18px; margin-bottom: 3px; }
+  #modalRoot .online-deck-builder > p { font-size: 13px; margin-bottom: 3px; }
+  #modalRoot [data-kind="online-deck"] article { padding: 10px; }
+  .deck-footer { padding-top: 5px; }
+}
+
+#modalRoot .card-preview { min-width: 0; max-width: 100%; }
+
+@media (max-width: 600px), (pointer: coarse) and (orientation: landscape) and (max-height: 600px) { #briscolaBanner { display: flex; } }

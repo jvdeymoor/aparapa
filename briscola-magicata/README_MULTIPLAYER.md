@@ -25,11 +25,35 @@ attraversa gli Scudi e colpisce il Nucleo. L'Intercettazione appartiene al difen
 si consuma al primo Laser di almeno 4 danni. La penalità alle mosse dura un turno.
 CHIUDI a fine partita cancella la sessione e ricarica la pagina, come ESCI.
 
+## Interfaccia e arena
+
+Lobby e configuratore coprono tutto lo schermo e rendono `inert` il gioco sottostante.
+Le istruzioni `?` nella lobby tornano alla scelta della modalità quando vengono chiuse.
+Nel configuratore solo le categorie scorrono: contatore «Carte scelte X/38» e pulsanti
+Avvia/Indietro restano sotto il box. I + si disabilitano al totale di 38 o al limite
+categoria; anche l'inserimento manuale rispetta il budget. Le Magicate sono fisse a 2,
+senza +/- né spinner.
+
+Il pulsante modalità è accanto alla stringa TURNO/PLAYER, come da correzione finale
+della richiesta. La barra Briscola/Mosse resta libera. Registro è nel menu.
+Le carte mostrano il costo effettivo in alto a destra, con il solo simbolo Energia
+verde/rosso in base all'Energia disponibile. Gli elementi in campo mostrano il proprio
+sprite nella riga e nel popup, a destra e a tutta altezza.
+
+L'arena non ha più il tavolo: `src/render/space.js` crea 480 stelle da un pixel e
+22 asteroidi procedurali in movimento sotto le cittadelle, capaci di ricevere ombre.
+Il pool di geometrie viene riutilizzato all'infinito. Gli schieramenti sono avvicinati
+al 70% della distanza precedente. Limiti zoom 0,412–4,08 e passo 0,34 (capacità +70%).
+La cornice resta sotto HUD e controlli, con `pointer-events: none`.
+`src/ui/refinements.css` contiene le nuove regole finali, senza cambiare le dimensioni
+dei pannelli giocatori.
+
 ## Risorse locali
 
 - `assets/images/cards/sprite-sheet.png`: 10×7 celle da 120×187.
 - `src/data/art.js`: mappa delle 67 carte per nome nell'ordine del foglio;
-  celle 68 e 69 inutilizzate, cella 70 usata come retro.
+  cella 68 inutilizzata, cella 69 ruotata di 90° come cornice trasparente
+  dell’arena (SVG senza intercettare tocchi), cella 70 usata come retro.
 - `assets/models/orbital/manifest.json`: quattro varianti per ogni famiglia,
   due cittadelle. Il renderer sceglie una variante casuale stabile per oggetto.
   Le Magicate sono effetti temporanei nell'arena; i Laser restano animazioni.
@@ -56,7 +80,8 @@ variabili `MONGODB_URI` e `ALLOWED_ORIGINS`. Non inserire credenziali nei file.
 ## Verifica e pubblicazione
 
 `npm test` controlla motore, regressioni del danno/fine turno, 50 partite CPU,
-mappa sprite, caricamento dei 22 GLB e flussi UI con DOM simulato.
+mappa sprite, caricamento dei 22 GLB, flussi UI con DOM simulato e dieci minuti
+di animazione spaziale simulata (limiti zoom e riutilizzo delle geometrie).
 Il test UI non sostituisce un controllo grafico su telefono.
 
 Per le API avvia un server temporaneo senza MongoDB con `PORT=3011 node server.js`,

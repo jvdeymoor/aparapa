@@ -1,12 +1,13 @@
+import { SpaceBackdrop, FORMATION_DISTANCE, ZOOM_LIMITS } from './space.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import * as THREE from '../../vendor/three.module.min.js';
 
-// Scena volutamente minimale: nessuna luce, ombra, foschia o effetto.
+// Orbital scene with a reusable procedural space background.
 export class TableRenderer {
   constructor(element, config) {
     this.el = element;this.models=new Map();this.variants=new Map();this.lastState=null;this.loadModels();
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x182234);
+    this.scene.background = new THREE.Color(0x02040b);
     this.target = new THREE.Vector3(0, 0, 0);
     this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 50);
     this.camera.position.set(0, 11, 16.5);
@@ -17,19 +18,14 @@ export class TableRenderer {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     element.append(this.renderer.domElement);
 
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(13.8, 0.28, 7.8), new THREE.MeshStandardMaterial({ color: 0x5a351d, roughness: 0.96, metalness: 0 }));
-    slab.position.y = -0.15;
-    slab.receiveShadow = true;
-    this.scene.add(slab);
-    const field = new THREE.Mesh(new THREE.PlaneGeometry(13.8, 7.8), new THREE.MeshStandardMaterial({ color: 0x3f7f3b, roughness: 0.98, metalness: 0 }));
-    field.rotation.x = -Math.PI / 2;
-    field.receiveShadow = true;
-    this.scene.add(field);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.28));
-    this.spot = new THREE.SpotLight(0xffffff, 5.5, 28, 0.62, 0.25, 1.3);
+    this.space = new SpaceBackdrop(this.scene);
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+    this.spot = new THREE.SpotLight(0xffffff, 80, 60, 0.9, 0.35, 1.3);
     this.spot.position.set(0, 13.8, 0);
     this.spot.castShadow = true;
     this.spot.shadow.mapSize.set(1024, 1024);
+    this.spot.shadow.bias = -.0003;
+    this.spot.shadow.normalBias = .03;
     this.spot.target.position.set(0, 0, 0);
     this.scene.add(this.spot, this.spot.target);
     this.units = new THREE.Group();
@@ -51,7 +47,7 @@ export class TableRenderer {
   isLandscapePhone() { return matchMedia('(pointer:coarse) and (orientation:landscape) and (max-height:600px)').matches; }
   syncTouchMode() { this.renderer.domElement.style.touchAction = this.isLandscapePhone() ? 'auto' : 'none'; }
   resize() {
-    const width = this.el.clientWidth, height = this.el.clientHeight || 300, aspect = width / height, vertical = 9;
+    const width = this.el.clientWidth, height = this.el.clientHeight || 300, aspect = width / height, vertical = Math.max(9, 12 / aspect);
     this.camera.left = -(vertical * aspect) / 2;
     this.camera.right = (vertical * aspect) / 2;
     this.camera.top = vertical / 2;
@@ -64,6 +60,10 @@ export class TableRenderer {
     this.camera.position.set(0, 11, 16.5);
     this.camera.zoom = 1;
     this.camera.lookAt(this.target);
+    this.camera.updateProjectionMatrix();
+  }
+  zoomBy(direction) {
+    this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom + direction * ZOOM_LIMITS.step, ZOOM_LIMITS.min, ZOOM_LIMITS.max);
     this.camera.updateProjectionMatrix();
   }
   pan(horizontal, vertical = 0) {
@@ -84,7 +84,7 @@ export class TableRenderer {
     canvas.addEventListener('pointermove', event => {
       if (this.isLandscapePhone()) { origin = null; return; }
       if (!origin || !canvas.hasPointerCapture(event.pointerId)) return;
-      const scale = 9 / Math.max(1, canvas.clientHeight) / this.camera.zoom;
+      const scale = (this.camera.top - this.camera.bottom) / Math.max(1, canvas.clientHeight) / this.camera.zoom;
       this.target.set(origin.target.x - (event.clientX - origin.x) * scale, 0, origin.target.z - (event.clientY - origin.y) * scale);
       this.camera.position.set(this.target.x, 11, this.target.z + 16.5);
       this.camera.lookAt(this.target);
@@ -92,7 +92,7 @@ export class TableRenderer {
     canvas.addEventListener('pointerup', () => { origin = null; });
   }
   fireLaser(owner) {
-    const start = owner ? 5.1 : -5.1, end = owner ? -5.1 : 5.1;
+    const start = (owner ? 1 : -1) * (FORMATION_DISTANCE - .49), end = -start;
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshStandardMaterial({ color: 0xfb8920, emissive: 0xfb8920, emissiveIntensity: 2 }));
     mesh.castShadow = true;
     this.units.add(mesh);
@@ -131,7 +131,7 @@ export class TableRenderer {
     if(this.gameId!==state.gameId){this.gameId=state.gameId;this.variants.clear()}
     this.units.clear();this.orbiters=[];this.floaters=[];this.lasers=[];this.impacts=[];
     state.players.forEach((player,index)=>{
-      const side=index?5.8:-5.8,direction=index?-1:1;
+      const side=index?FORMATION_DISTANCE:-FORMATION_DISTANCE,direction=index?-1:1;
       const core=this.model('citadel',`core-${index}`,2);core.position.set(side,.8,0);this.units.add(core);
       player.drones.forEach((drone,n)=>{const mesh=this.model('drone',drone.uid);mesh.position.set(side+direction*(1.7+Math.floor(n/5)*.85),.5,-1.5+n%5*.75);this.units.add(mesh)});
       player.shields.forEach((shield,n)=>{const mesh=this.model('shield',shield.uid||`${index}-shield-${shield.name}-${n}`);this.units.add(mesh);this.orbiters.push({mesh,coreX:side,direction,phase:n/Math.max(1,player.shields.length)*Math.PI*2})});
@@ -143,7 +143,11 @@ export class TableRenderer {
     });
   }
   tick() {
-    const time = performance.now() * 0.00055;
+    const frameTime = performance.now();
+    const dt = Math.min(.05, Math.max(0, (frameTime - (this.lastFrame ?? frameTime)) / 1000));
+    this.lastFrame = frameTime;
+    this.space.update(dt, this.camera);
+    const time = frameTime * 0.00055;
     this.orbiters.forEach(orbiter => {
       const angle = orbiter.phase + time;
       orbiter.mesh.position.set(orbiter.coreX + Math.cos(angle) * 1.16, 0.3, Math.sin(angle) * 1.16);

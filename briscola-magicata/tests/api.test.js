@@ -12,7 +12,17 @@ try{
  const second=(await request(route+'/join',null,{deckCounts:DEFAULT_DECK_COUNTS})).data;
  let state=(await request(route,first)).data.state;
  assert(state.players[1].hand.every(id=>id==='hidden'));
+ assert.equal(state.phase,'preparation');assert(state.players[1].openingHand.every(id=>id==='hidden'));
+ assert.equal((await request(route+'/end-turn',first,{})).status,400);
+ assert.equal((await request(route+'/action',second,{action:{type:'attack',uid:'x'}})).status,400);
+ const sessions=[first,second];
+ const preparations=await Promise.all(sessions.map(async(session,actor)=>{const view=(await request(route,session)).data.state;const action=availableActions(view,C,actor)[0];return action?request(route+'/action',session,{action}):null}));
+ for(const result of preparations)if(result)assert.equal(result.status,200);
+ state=(await request(route,first)).data.state;preparations.forEach((result,i)=>{if(result)assert.equal(state.preparation.movesUsed[i],1)});
+ const confirmations=await Promise.all(sessions.map(session=>request(route+'/ready',session,{})));assert(confirmations.every(r=>r.status===200));
+ state=(await request(route,first)).data.state;assert.equal(state.phase,'battle');assert(state.preparation.ready.every(Boolean));assert.equal(state.turnId,3);
  assert.equal((await request(route+'/action',second,{action:{type:'play',cardId:'laser-1',target:0}})).status,409);
+
  const initialTurn=state.turnId;
  for(let i=0;i<2&&state.active===0;i++){
   const action=availableActions(state,C)[0];assert(action);
@@ -24,4 +34,4 @@ try{
  assert.equal(secondView.turnId,state.turnId);
  for(const asset of ['/assets/images/cards/sprite-sheet.png','/vendor/GLTFLoader.js','/assets/models/orbital/drone_01.glb'])assert.equal((await fetch(base+asset)).status,200);
 }finally{assert.equal((await request(route+'/leave',first,{})).status,200);assert.equal((await request(route,first)).status,410)}
-console.log('api: room, join, privacy, automatic turn, assets and leave: ok');
+console.log('api: room, preparation privacy, concurrent opening actions/readiness, automatic turn, assets and leave: ok');

@@ -161,3 +161,73 @@ header nav [data-modal="rules"] { display: none !important; }
 #modalRoot .card-preview { min-width: 0; max-width: 100%; }
 
 @media (max-width: 600px), (pointer: coarse) and (orientation: landscape) and (max-height: 600px) { #briscolaBanner { display: flex; } }
+
+/* Opening round: fixed five-card layout, no scrolling in this screen. */
+#modalRoot [data-kind="preparation"] article {
+  height: calc(100dvh - 28px);
+  max-width: 700px;
+  padding: 12px;
+  overflow: hidden;
+}
+.preparation-screen { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.preparation-screen h2 { margin: 0; font-size: 20px; flex: none; }
+.preparation-hand { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); grid-template-rows: repeat(2,minmax(0,1fr)); gap: 8px; flex: 1; min-height: 0; width: 100%; max-width: 550px; margin: 0 auto; }
+#modalRoot .preparation-card { grid-column: span 2; width: 100%; height: 100% !important; min-height: 0 !important; max-height: none !important; padding: 5px; container-type: size; }
+.preparation-card:nth-child(4) { grid-column: 2 / span 2 !important; }
+.preparation-card:nth-child(5) { grid-column: 4 / span 2 !important; }
+.preparation-card > span { position: absolute; top: 5px; left: 5px; z-index: 1; }
+.preparation-card > b { margin-top: auto; z-index: 1; font-size: clamp(10px,8cqh,18px) !important; line-height: 1.1; }
+.preparation-card .card-energy { position: absolute; top: 5px; right: 5px; font: bold 13px monospace; color: white; background: #050817cc; z-index: 1; }
+.preparation-card.attack-blocked::before { content: ''; position: absolute; inset: 0; background: #000a; }
+.preparation-card .preparation-warning { position: absolute; top: 32%; left: 3px; right: 3px; z-index: 2; background: #721b2de6; color: white; text-align: center; font: bold clamp(8px,6cqh,12px)/1.15 monospace !important; white-space: normal; padding: 4px 2px; }
+.preparation-card.prepared { opacity: .45; }
+.preparation-card .prepared-label { position: absolute; top: 38%; left: 0; width: 100%; text-align: center; color: #8affb1; background: #050817dd; }
+.preparation-energy { flex: none; font: bold 16px monospace; color: #ffed9a; }
+.preparation-screen .preparation-help { flex: none; margin: 0; font-size: 14px; line-height: 1.25; }
+.preparation-status { margin: 0; font-size: 13px; color: #ffdc88; }
+.preparation-status:empty { display: none; }
+#readyPreparation { flex: none; min-height: 44px; }
+@media (max-height: 480px) {
+  .preparation-screen { gap: 4px; }
+  .preparation-screen h2 { font-size: 15px; }
+  .preparation-energy { font-size: 12px; }
+  .preparation-screen .preparation-help { font-size: 11px; }
+  #readyPreparation { min-height: 32px; padding: 5px; }
+}
+
+/* Compensate the frame's asymmetric sprite padding, as seen in the phone screenshot. */
+#arenaView { position: absolute; inset: 0; transform: translate(-2.8%,1.7%); z-index: 0; }
+#arenaView #threeCanvas { width: 100%; height: 100% !important; min-height: 0 !important; }
+#arenaView canvas { display: block; }
+#arenaView #arenaFrame { inset: 0; width: 100%; height: 100%; }
+#arena #arenaControls { left: 50%; right: auto; bottom: 10px; transform: translateX(-50%); }
+#arena .expand-player { position: absolute; bottom: 10px; width: 34px; height: 32px; padding: 5px; z-index: 4; background: #0b2458e8; color: #eaf5ff; }
+#expandPlayer1 { left: 12px; }
+#expandPlayer2 { right: 12px; }
+.expand-player svg { width: 100%; height: 100%; pointer-events: none; }
+#arena #arenaControls button { width: 34px; height: 32px; }
+.mobile-list .unit-row .unit-label, .units .unit-row .unit-label { font-size: 13px !important; line-height: 1.2 !important; }
+
+/* Equal-height, single-line, half-transparent player strips. */
+#arena #centerHud { inset: 7px 6px auto; display: flex; gap: 4px; justify-content: space-between; align-items: flex-start; }
+#arena #centerHud .core-hud { display: flex; align-items: center; flex-wrap: nowrap; gap: 3px; padding: 0 !important; max-width: none !important; min-width: 0; background: #0008; font: calc(clamp(12px,4vw,18px) - 2px)/1.1 monospace !important; white-space: nowrap; }
+#arena #centerHud .core-hud b, #arena #centerHud .core-hud span, #arena #centerHud .core-hud em { display: inline; max-width: none; margin: 0; padding: 0; font: inherit !important; line-height: inherit !important; }
+#arena #centerHud .core-hud b { font-weight: bold !important; }
+#arena #centerHud .hud-heart { color: #ff3046; }
+#arena #centerHud .hud-energy { color: #ffe433; }
+
+#modalRoot [data-kind="player-panel"] { padding: 0 !important; display: flex; align-items: stretch; justify-content: flex-start; }
+#modalRoot [data-kind="player-panel"][data-side="right"] { justify-content: flex-end; }
+#modalRoot [data-kind="player-panel"] article { width: 75vw; max-width: 75vw; height: 100dvh; max-height: 100dvh !important; border-radius: 0; overflow: hidden; padding: 14px; }
+.player-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.player-panel h2, .player-panel > p { flex: none; margin: 0 0 12px; }
+.expanded-units { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.expanded-units h3 { font-size: 20px; margin: 14px 0 6px; }
+#modalRoot .expanded-units .unit-row { min-height: 120px; display: flex; align-items: center; padding: 10px; margin-bottom: 7px; }
+#modalRoot .expanded-units .unit-label { font-size: clamp(18px,4vw,26px) !important; line-height: 1.2 !important; }
+#closePlayerPanel { flex: none; min-height: 44px; margin-top: 8px; }
+
+/* Absolute label: it occupies existing empty space, without reflow. */
+.brand, .lobby-title { position: relative; }
+.brand .build-version, .lobby-title .build-version { position: absolute; top: 100%; left: 0; display: block; padding: 0; margin: 2px 0 0; color: #9aadc5; font: 8px/1 monospace; letter-spacing: 0; pointer-events: none; }
+.lobby-title .build-version { left: 50%; transform: translateX(-50%); }

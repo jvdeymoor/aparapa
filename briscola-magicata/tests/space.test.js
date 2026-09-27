@@ -22,3 +22,13 @@ const renderer=Object.create(TableRenderer.prototype);renderer.camera=camera;
 for(let i=0;i<100;i++)renderer.zoomBy(1);assert.equal(camera.zoom,ZOOM_LIMITS.max);
 for(let i=0;i<100;i++)renderer.zoomBy(-1);assert.equal(camera.zoom,ZOOM_LIMITS.min);
 console.log('space: formation spacing, zoom bounds, pixel stars, shadow receivers and 10-minute bounded animation: ok');
+
+const {configureArenaModel,createArenaSun}=await import('../src/render/materials.js');
+const model=new THREE.Group(),metal=new THREE.MeshStandardMaterial({color:0x555555}),accent=new THREE.MeshStandardMaterial({color:0xffed9a,emissive:0xffed9a});
+model.add(new THREE.Mesh(new THREE.BoxGeometry(),metal),new THREE.Mesh(new THREE.BoxGeometry(),accent));
+configureArenaModel(model,'drone');assert.equal(metal.color.getHex(),0x555555);assert.equal(accent.color.getHex(),0x66501a);assert.equal(accent.emissive.getHex(),0x080600);model.traverse(o=>{if(o.isMesh)assert(o.castShadow&&o.receiveShadow)});
+const sun=createArenaSun();assert(sun.castShadow);assert.equal(sun.shadow.mapSize.x,2048);
+scene.updateMatrixWorld(true);
+const direction=sun.target.position.clone().sub(sun.position).normalize();
+for(const x of [-FORMATION_DISTANCE,FORMATION_DISTANCE]){const ray=new THREE.Raycaster(new THREE.Vector3(x,.8,0),direction);assert(ray.intersectObjects(space.asteroids.slice(0,2).map(r=>r.mesh)).length>0,'citadel shadow ray must land on an asteroid after ten minutes')}
+console.log('lighting: shadow casters, receivers below citadels and dark drone accents: ok');

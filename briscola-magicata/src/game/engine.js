@@ -1,16 +1,67 @@
 import{byId,BRISCOLE,buildDeck,DEFAULT_DECK_COUNTS}from'../data/cards.js';
 const clone=x=>JSON.parse(JSON.stringify(x)); const rng=s=>{let x=s>>>0;return()=>((x=(x*1664525+1013904223)>>>0)/4294967296)};
-export function newGame(C,seed=Date.now(),deckCounts=[DEFAULT_DECK_COUNTS,DEFAULT_DECK_COUNTS]){let r=rng(seed),deck=id=>buildDeck(deckCounts[id]||DEFAULT_DECK_COUNTS,r);let s={saveVersion:1,gameId:'local-'+seed,seed,round:1,turnId:1,active:0,movesUsed:0,players:[0,1].map((id)=>({id,name:`PLAYER ${id+1}`,integrity:C.RULES.CORE_INTEGRITY,energy:C.RULES.START_ENERGY,maxEnergy:C.RULES.START_MAX_ENERGY,dominance:0,dominionStreak:0,deck:deck(id),hand:[],discard:[],shields:[],drones:[],viruses:[],radiation:0,directives:[{id:'intercept',label:'Intercettazione: il primo Laser ≥4 perde 2 danni',active:true}],deckout:0})),briscola:clone(BRISCOLE[0]),history:[],winner:null,temp:{reducedMoves:[0,0]},deckCounts:deckCounts.map(x=>({...x}))};s.players.forEach(p=>draw(s,p.id,C.RULES.STARTING_HAND,C));log(s,0,'Partita inizializzata: mazzi da 40 carte generati dal pool.');return s}
+export function newGame(C,seed=Date.now(),deckCounts=[DEFAULT_DECK_COUNTS,DEFAULT_DECK_COUNTS],{prepare=true}={}){let r=rng(seed),deck=id=>buildDeck(deckCounts[id]||DEFAULT_DECK_COUNTS,r);let s={saveVersion:1,gameId:'local-'+seed,seed,round:1,turnId:1,active:0,movesUsed:0,players:[0,1].map((id)=>({id,name:`PLAYER ${id+1}`,integrity:C.RULES.CORE_INTEGRITY,energy:C.RULES.START_ENERGY,maxEnergy:C.RULES.START_MAX_ENERGY,dominance:0,dominionStreak:0,deck:deck(id),hand:[],discard:[],shields:[],drones:[],viruses:[],radiation:0,directives:[{id:'intercept',label:'Intercettazione: il primo Laser ≥4 perde 2 danni',active:true}],deckout:0})),briscola:clone(BRISCOLE[0]),history:[],winner:null,temp:{reducedMoves:[0,0]},deckCounts:deckCounts.map(x=>({...x}))};s.players.forEach(p=>draw(s,p.id,C.RULES.STARTING_HAND,C));log(s,0,'Partita inizializzata: mazzi da 40 carte generati dal pool.');if(prepare){s.phase='preparation';s.preparation={ready:[false,false],movesUsed:[0,0]};s.players.forEach(p=>p.openingHand=[...p.hand])}return s}
 function log(s,p,text,type='info'){const id=s.nextActionId??(s.history.length+1);s.nextActionId=id+1;s.history.unshift({actionId:`a-${id}`,turnId:s.turnId,playerId:p,type,text,at:new Date().toISOString()});s.history=s.history.slice(0,120)}
 function draw(s,pid,n,C){let p=s.players[pid];while(n--&&s.winner===null){if(!p.deck.length){p.deckout++;damage(s,pid,p.deckout,'esaurimento del mazzo');log(s,pid,`Mazzo esaurito: ${p.deckout} danni al Nucleo.`);continue}if(p.hand.length<C.RULES.MAX_HAND)p.hand.push(p.deck.pop());else p.discard.push(p.deck.pop())}}
 function damage(s,pid,n,reason){let p=s.players[pid],left=n;while(left&&p.shields.length){let sh=p.shields[0],a=Math.min(left,sh.amount);sh.amount-=a;left-=a;if(!sh.amount)p.shields.shift()}if(reason!=='esaurimento del mazzo')while(left&&p.drones.length){const d=p.drones[0],taken=Math.min(left,d.hp);d.hp-=taken;left-=taken;if(!d.hp){p.drones.shift();p.dominance=Math.max(0,p.dominance-(d.dominance||0));log(s,pid,`${d.name} distrutto.`)}}if(left)p.integrity=Math.max(0,p.integrity-left);if(p.integrity<=0)s.winner=1-pid;return n-left}
 function begin(s,C){let p=s.players[s.active];if(s.active===0)s.round++; if(s.round>1&&s.round%C.RULES.BRISCOLA_EVERY_ROUNDS===0&&s.active===0){s.briscola=clone(BRISCOLE[(s.round/C.RULES.BRISCOLA_EVERY_ROUNDS)%BRISCOLE.length|0]);log(s,s.active,'Nuova Briscola: '+s.briscola.name,'briscola')}if(s.turnId>1&&s.turnId%C.RULES.ENERGY_EVERY_TURNS===0)p.maxEnergy=Math.min(C.RULES.ABSOLUTE_MAX_ENERGY,p.maxEnergy+1);p.energy=p.maxEnergy;let rad=p.radiation;if(rad){damage(s,s.active,1,'radiazione');p.radiation--;p.radiationUnits?.shift();log(s,s.active,`☢ Radiazione risolta: 1 danno (${p.radiation} rimanente).`)}if(s.winner!==null)return;for(const v of p.viruses.splice(0)){if(s.winner!==null)return;damage(s,s.active,v.amount,'virus');log(s,1-s.active,`Virus ${v.name} attivato: ${v.amount} danno.`)}if(s.winner!==null)return;draw(s,s.active,C.RULES.DRAW_PER_TURN,C);if(s.winner!==null)return;if(p.dominance>=C.RULES.DOMINION_THRESHOLD)p.dominionStreak++;else p.dominionStreak=0;if(p.dominionStreak>=C.RULES.DOMINION_TURNS_TO_WIN)s.winner=s.active;log(s,s.active,`Inizio turno: Energia ${p.energy}/${p.maxEnergy}, carta pescata.`)}
-export function legal(s,C,action){if(s.winner!==null)return'La partita è conclusa';if(!action||!['play','attack'].includes(action.type))return'Azione sconosciuta';let p=s.players[s.active];if(action.type==='play'||action.type==='attack'){if(s.movesUsed>=C.RULES.MOVES_PER_TURN+(s.temp.reducedMoves[s.active]||0))return'Mosse terminate'}if(action.type==='play'){let card=byId(action.cardId);if(!p.hand.includes(action.cardId))return'Carta non presente in mano';if(!card)return'Carta sconosciuta';let cost=cardCost(s,card);if(p.energy<cost)return'Energia insufficiente';if(['LASER','RADIAZIONE','VIRUS'].includes(card.category)&&action.target!==1-s.active)return'Bersaglio avversario richiesto'}if(action.type==='attack'){let d=p.drones.find(x=>x.uid===action.uid);if(!d||d.used)return'Drone non disponibile'}return null}
-export function act(state,C,action){let e=legal(state,C,action);if(e)throw Error(e);let s=clone(state),p=s.players[s.active],opp=s.players[1-s.active];if(action.type==='play'){let c=byId(action.cardId),cost=cardCost(s,c);p.hand.splice(p.hand.indexOf(c.id),1);p.discard.push(c.id);p.energy-=cost;s.movesUsed++;if(c.effect==='shield'){p.shields.push({uid:`s-${s.turnId}-${s.movesUsed}`,name:c.name,amount:c.amount+(s.briscola.name==='FENDITURA'?1:0)});log(s,p.id,`${c.name}: Scudo ${c.amount}.`)}if(c.effect==='drone'){p.drones.push({uid:`d-${s.turnId}-${s.movesUsed}`,name:c.name,attack:c.attack+(s.briscola.name==='GUERRA DEI DRONI'?1:0),hp:c.hp,used:false,dominance:c.dominance});p.dominance+=c.dominance;log(s,p.id,`${c.name} entra in orbita (${c.attack}/${c.hp}).`)}if(c.effect==='laser'){let n=c.amount+(s.briscola.name==='TURBOLENZA'?1:0);if(opp.directives[0]?.active&&n>=4){opp.directives[0].active=false;n-=2;log(s,opp.id,'Direttiva Intercettazione: Laser ridotto di 2.','directive')}damage(s,opp.id,n,'laser');log(s,p.id,`${c.name} colpisce le difese: ${n} danni.`,'laser')}if(c.effect==='radiation'){let n=c.amount+(s.briscola.name==='TEMPESTA SOLARE'?1:0);opp.radiationUnits??=Array.from({length:opp.radiation},(_,i)=>`old-${opp.id}-${i}`);opp.radiationUnits.push(...Array.from({length:n},(_,i)=>`r-${s.turnId}-${s.movesUsed}-${i}`));opp.radiation+=n;log(s,p.id,`${c.name}: ☢ Radiazione ${n}.`)}if(c.effect==='virus'){opp.viruses.push({uid:`v-${s.turnId}-${s.movesUsed}`,name:c.name,amount:c.amount});log(s,p.id,`${c.name} installato come anomalia.`)}if(c.effect==='magic'){if(c.mode===0){draw(s,p.id,2,C);if(s.winner===null)p.integrity=Math.min(C.RULES.CORE_INTEGRITY,p.integrity+2)}if(c.mode===1){[p.radiation,opp.radiation]=[opp.radiation,p.radiation];[p.radiationUnits,opp.radiationUnits]=[opp.radiationUnits||[],p.radiationUnits||[]]}if(c.mode===2)s.temp.reducedMoves[opp.id]=-1;if(c.mode===3)s.briscola=clone(BRISCOLE[(s.turnId+3)%BRISCOLE.length]);log(s,p.id,`MAGICATA ${c.name}: ${c.description}`,'magic')}}else if(action.type==='attack'){let d=p.drones.find(x=>x.uid===action.uid);d.used=true;s.movesUsed++;damage(s,opp.id,d.attack,'drone');log(s,p.id,`${d.name} attacca le difese: ${d.attack} danni.`,'drone')}return settleTurn(s,C)}
-export function endTurn(state,C){if(state.winner!==null)return state;let s=clone(state),p=s.players[s.active];p.drones.forEach(d=>d.used=false);s.temp.reducedMoves[s.active]=0;log(s,p.id,'Fine turno.');s.active=1-s.active;s.movesUsed=0;s.turnId++;begin(s,C);return settleTurn(s,C)}
-export function availableActions(s,C){const p=s.players[s.active];return [...p.hand.map(cardId=>({type:'play',cardId,target:1-s.active})),...p.drones.map(d=>({type:'attack',uid:d.uid}))].filter(a=>!legal(s,C,a))}
+export const isPreparing=s=>s.phase==='preparation';
+export const PREPARATION_WARNING="NON SI PUO' ATTACCARE NEL PRIMO TURNO";
+export const dealsImmediateDamage=card=>card?.effect==='laser';
+export function legal(s,C,action,actor=s.active){
+  if(s.winner!==null)return 'La partita è conclusa';
+  if(!action||!['play','attack'].includes(action.type))return 'Azione sconosciuta';
+  if(![0,1].includes(actor))return 'Giocatore sconosciuto';
+  const preparing=isPreparing(s),p=s.players[preparing?actor:s.active];
+  if(preparing){
+    if(s.preparation.ready[actor])return 'Hai già confermato INIZIA';
+    if(action.type==='attack'||dealsImmediateDamage(byId(action.cardId)))return PREPARATION_WARNING;
+    if(!p.openingHand.includes(action.cardId))return 'Disponibili soltanto le carte della prima mano';
+  }
+  const moves=preparing?s.preparation.movesUsed[actor]:s.movesUsed;
+  if(moves>=C.RULES.MOVES_PER_TURN+(s.temp.reducedMoves[p.id]||0))return 'Mosse terminate';
+  if(action.type==='play'){
+    const card=byId(action.cardId);
+    if(!p.hand.includes(action.cardId))return 'Carta non presente in mano';
+    if(!card)return 'Carta sconosciuta';
+    if(p.energy<cardCost(s,card))return 'Energia insufficiente';
+    if(['LASER','RADIAZIONE','VIRUS'].includes(card.category)&&action.target!==1-p.id)return 'Bersaglio avversario richiesto';
+  }
+  if(action.type==='attack'){const d=p.drones.find(x=>x.uid===action.uid);if(!d||d.used)return 'Drone non disponibile'}
+  return null;
+}
+export function act(state,C,action,actor=state.active){let e=legal(state,C,action,actor);if(e)throw Error(e);let s=clone(state);const preparing=isPreparing(s),originalActive=s.active,originalTurn=s.turnId;if(preparing){s.active=actor;s.turnId=actor+1;s.movesUsed=s.preparation.movesUsed[actor]}let p=s.players[s.active],opp=s.players[1-s.active];if(action.type==='play'){let c=byId(action.cardId),cost=cardCost(s,c);p.hand.splice(p.hand.indexOf(c.id),1);p.discard.push(c.id);p.energy-=cost;s.movesUsed++;if(c.effect==='shield'){p.shields.push({uid:`s-${s.turnId}-${s.movesUsed}`,name:c.name,amount:c.amount+(s.briscola.name==='FENDITURA'?1:0)});log(s,p.id,`${c.name}: Scudo ${c.amount}.`)}if(c.effect==='drone'){p.drones.push({uid:`d-${s.turnId}-${s.movesUsed}`,name:c.name,attack:c.attack+(s.briscola.name==='GUERRA DEI DRONI'?1:0),hp:c.hp,used:false,dominance:c.dominance});p.dominance+=c.dominance;log(s,p.id,`${c.name} entra in orbita (${c.attack}/${c.hp}).`)}if(c.effect==='laser'){let n=c.amount+(s.briscola.name==='TURBOLENZA'?1:0);if(opp.directives[0]?.active&&n>=4){opp.directives[0].active=false;n-=2;log(s,opp.id,'Direttiva Intercettazione: Laser ridotto di 2.','directive')}damage(s,opp.id,n,'laser');log(s,p.id,`${c.name} colpisce le difese: ${n} danni.`,'laser')}if(c.effect==='radiation'){let n=c.amount+(s.briscola.name==='TEMPESTA SOLARE'?1:0);opp.radiationUnits??=Array.from({length:opp.radiation},(_,i)=>`old-${opp.id}-${i}`);opp.radiationUnits.push(...Array.from({length:n},(_,i)=>`r-${s.turnId}-${s.movesUsed}-${i}`));opp.radiation+=n;log(s,p.id,`${c.name}: ☢ Radiazione ${n}.`)}if(c.effect==='virus'){opp.viruses.push({uid:`v-${s.turnId}-${s.movesUsed}`,name:c.name,amount:c.amount});log(s,p.id,`${c.name} installato come anomalia.`)}if(c.effect==='magic'){if(c.mode===0){draw(s,p.id,2,C);if(s.winner===null)p.integrity=Math.min(C.RULES.CORE_INTEGRITY,p.integrity+2)}if(c.mode===1){[p.radiation,opp.radiation]=[opp.radiation,p.radiation];[p.radiationUnits,opp.radiationUnits]=[opp.radiationUnits||[],p.radiationUnits||[]]}if(c.mode===2)s.temp.reducedMoves[opp.id]=-1;if(c.mode===3)s.briscola=clone(BRISCOLE[(s.turnId+3)%BRISCOLE.length]);log(s,p.id,`MAGICATA ${c.name}: ${c.description}`,'magic')}}else if(action.type==='attack'){let d=p.drones.find(x=>x.uid===action.uid);d.used=true;s.movesUsed++;damage(s,opp.id,d.attack,'drone');log(s,p.id,`${d.name} attacca le difese: ${d.attack} danni.`,'drone')}if(preparing){s.preparation.movesUsed[actor]=s.movesUsed;s.movesUsed=0;s.active=originalActive;s.turnId=originalTurn;return s}return settleTurn(s,C)}
+export function endTurn(state,C){if(isPreparing(state))throw Error('Conferma la preparazione con INIZIA');if(state.winner!==null)return state;let s=clone(state),p=s.players[s.active];p.drones.forEach(d=>d.used=false);s.temp.reducedMoves[s.active]=0;log(s,p.id,'Fine turno.');s.active=1-s.active;s.movesUsed=0;s.turnId++;begin(s,C);return settleTurn(s,C)}
+export function availableActions(s,C,actor=s.active){const p=s.players[isPreparing(s)?actor:s.active];return [...p.hand.map(cardId=>({type:'play',cardId,target:1-p.id})),...p.drones.map(d=>({type:'attack',uid:d.uid}))].filter(a=>!legal(s,C,a,actor))}
 // Skip unusable turns on the authoritative engine, including after drawing.
-export function settleTurn(s,C){if(s.winner===null&&!availableActions(s,C).length)return endTurn(s,C);return s}
+export function settleTurn(s,C){if(isPreparing(s))return s;if(s.winner===null&&!availableActions(s,C).length)return endTurn(s,C);return s}
 export function autoPlay(s,C){const actions=availableActions(s,C);const score=a=>a.type==='attack'?4+s.players[s.active].drones.find(d=>d.uid===a.uid).attack:({LASER:7,DRONE:6,SCUDO:s.players[s.active].integrity<10?8:3,VIRUS:5,RADIAZIONE:4,MAGICATA:2}[byId(a.cardId).category]);actions.sort((a,b)=>score(b)-score(a));return actions.length?act(s,C,actions[0]):endTurn(s,C)}
 
 export function cardCost(s,card){return Math.max(0,card.cost-((s.briscola.name==='SOVRACCARICO'&&card.category==='LASER')?1:0))}
+
+export function readyPreparation(state,C,actor){
+  if(!isPreparing(state))return state;
+  if(![0,1].includes(actor))throw Error('Giocatore sconosciuto');
+  if(state.preparation.ready[actor])return state;
+  const s=clone(state);
+  s.preparation.ready[actor]=true;
+  s.temp.reducedMoves[actor]=0;
+  log(s,actor,`PLAYER ${actor+1} ha confermato INIZIA.`,'preparation');
+  if(s.preparation.ready.every(Boolean)){
+    s.phase='battle';s.active=0;s.movesUsed=0;s.turnId=3;
+    // Both opening turns have been spent; resume the usual draw/energy/effect cycle.
+    begin(s,C);
+    return settleTurn(s,C);
+  }
+  return s;
+}
+export function autoPrepare(state,C,actor=1){
+  let s=state;
+  while(isPreparing(s)&&!s.preparation.ready[actor]){
+    const actions=availableActions(s,C,actor);
+    if(!actions.length)break;
+    actions.sort((a,b)=>({SCUDO:5,DRONE:4,VIRUS:3,RADIAZIONE:2,MAGICATA:1}[byId(b.cardId).category])-({SCUDO:5,DRONE:4,VIRUS:3,RADIAZIONE:2,MAGICATA:1}[byId(a.cardId).category]));
+    s=act(s,C,actions[0],actor);
+  }
+  return readyPreparation(s,C,actor);
+}

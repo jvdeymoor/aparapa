@@ -2,7 +2,7 @@ import {gameIcon} from './ui/icons.js';
 import {spriteStyle} from './data/art.js';
 import{newGame,act,endTurn,autoPlay,legal,cardCost,isPreparing,readyPreparation,autoPrepare,dealsImmediateDamage,PREPARATION_WARNING}from'./game/engine.js';import{byId,CARD_POOL,DECK_CATEGORIES,DECK_LIMITS,DEFAULT_DECK_COUNTS}from'./data/cards.js';import{LocalGameAdapter}from'./storage/adapter.js';import{TableRenderer}from'./render/table.js';
 // Increment for each published UI revision.
-const APP_VERSION='v1.3';
+const APP_VERSION='v1.4';
 document.title='BRISCOLA MAGICATA';document.querySelector('.brand').innerHTML=`BRISCOLA <span>MAGICATA</span> <small>ASYNCHRONOUS CARD CONFLICT</small><span class="build-version">${APP_VERSION}</span>`;document.querySelector('.brand').style.visibility='visible';
 // Layout mobile: la mano scorre col pollice e Fine Turno resta sempre raggiungibile.
 document.head.insertAdjacentHTML('beforeend',`<style>.debug-ai{display:none!important}.card-preview{min-width:min(330px,88vw);border:2px solid var(--c);padding:14px;background:linear-gradient(150deg,#162952,#0c1026)}.card-preview>span{color:var(--c);font:13px monospace}.card-preview h2{font-size:28px;margin:12px 0}.card-preview .cost{font-size:21px;color:#ffe07a}.card-preview .warning{color:#ff6573}</style>`);
@@ -142,7 +142,7 @@ function preparationCard(id){
 function openPreparation(message=''){
   if(!isPreparing(s))return;
   const id=localPlayerId(),p=s.players[id],ready=s.preparation.ready[id];
-  modal('preparation',`<section class="preparation-screen"><h2>PREPARA LA PRIMA MANO</h2><div class="preparation-hand">${p.openingHand.map(preparationCard).join('')}</div><div class="preparation-energy">${gameIcon('ENERGIA')} ENERGIA ${p.energy}/${p.maxEnergy} · MOSSE ${s.preparation.movesUsed[id]}/${C.RULES.MOVES_PER_TURN+(s.temp.reducedMoves[id]||0)}</div><p class="preparation-help">Se hai le carte, prepara le tue difese e strategie, in questa fase non puoi fare danno. Premi INIZIA quando vuoi.</p><p class="preparation-status" role="status">${esc(message|| (ready?'In attesa che l’altro giocatore prema INIZIA.':s.preparation.ready[1-id]?'L’altro giocatore è pronto.':''))}</p><button id="readyPreparation" class="primary" ${ready?'disabled':''}>${ready?'IN ATTESA':'INIZIA'}</button></section>`);
+  modal('preparation',`<section class="preparation-screen"><h2>PREPARA LA PRIMA MANO</h2><div class="preparation-hand"><div class="preparation-grid">${p.openingHand.map(preparationCard).join('')}</div></div><div class="preparation-energy">${gameIcon('ENERGIA')} ENERGIA ${p.energy}/${p.maxEnergy} · MOSSE ${s.preparation.movesUsed[id]}/${C.RULES.MOVES_PER_TURN+(s.temp.reducedMoves[id]||0)}</div><p class="preparation-help">Se hai le carte, prepara le tue difese e strategie, in questa fase non puoi fare danno. Premi INIZIA quando vuoi.</p><p class="preparation-status" role="status">${esc(message|| (ready?'In attesa che l’altro giocatore prema INIZIA.':s.preparation.ready[1-id]?'L’altro giocatore è pronto.':''))}</p><button id="readyPreparation" class="primary" ${ready?'disabled':''}>${ready?'IN ATTESA':'INIZIA'}</button></section>`);
   $('#readyPreparation').onclick=()=>finishPreparation();
 }
 async function playPreparationCard(action){

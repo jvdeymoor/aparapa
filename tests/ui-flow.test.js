@@ -1,4 +1,5 @@
 // Controller smoke test with a minimal DOM; browser layout is deliberately not simulated.
+import {gameIcon} from '../src/ui/icons.js';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -22,7 +23,7 @@ class Element {
 const document={head:new Element(),body:new Element(),addEventListener(){},createElement:()=>new Element(),querySelector(selector){if(elements.has(selector))return elements.get(selector);if(['#closeModal','#backLobby','.modal','#modalRoot .modal'].includes(selector))return null;const el=new Element();elements.set(selector,el);return el},querySelectorAll(selector){if(selector==='[data-online-step]')return [...elements].filter(([k])=>k.startsWith('step-')).map(([,v])=>v);if(selector==='[data-online-category]')return [...elements].filter(([k])=>k.startsWith('[data-online-category=')).map(([,v])=>v);return []}};
 globalThis.localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');const config={window:{}};vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],config);
-const context=vm.createContext({...engine,...cards,spriteStyle,LocalGameAdapter,document,window:config.window,localStorage,location:{href:'http://localhost/',pathname:'/',search:'',replace(){reloaded=true}},URL,URLSearchParams,console,matchMedia:()=>({matches:false}),innerWidth:1280,innerHeight:800,MutationObserver:class{observe(){}},TableRenderer:class{update(){}resetView(){}resize(){}},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id),setInterval:()=>0,clearInterval(){},confirm:()=>true,alert:message=>{throw Error(message)}});
+const context=vm.createContext({...engine,...cards,spriteStyle,gameIcon,LocalGameAdapter,document,window:config.window,localStorage,location:{href:'http://localhost/',pathname:'/',search:'',replace(){reloaded=true}},URL,URLSearchParams,console,matchMedia:()=>({matches:false}),innerWidth:1280,innerHeight:800,MutationObserver:class{observe(){}},TableRenderer:class{update(){}resetView(){}resize(){}},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id),setInterval:()=>0,clearInterval(){},confirm:()=>true,alert:message=>{throw Error(message)}});
 let code=await readFile(new URL('../src/main.js',import.meta.url),'utf8');code=code.replace(/^import[^\n]+\n/gm,'');vm.runInContext(code,context);
 while([...timers.values()].some(t=>t.ms===0)){for(const [id,t] of [...timers])if(t.ms===0){timers.delete(id);t.fn()}}
 const get=selector=>document.querySelector(selector),run=code=>vm.runInContext(code,context);

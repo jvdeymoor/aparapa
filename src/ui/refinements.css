@@ -231,3 +231,17 @@ header nav [data-modal="rules"] { display: none !important; }
 .brand, .lobby-title { position: relative; }
 .brand .build-version, .lobby-title .build-version { position: absolute; top: 100%; left: 0; display: block; padding: 0; margin: 2px 0 0; color: #9aadc5; font: 8px/1 monospace; letter-spacing: 0; pointer-events: none; }
 .lobby-title .build-version { left: 50%; transform: translateX(-50%); }
+
+/* v1.1: icon artwork remains inline without changing line/box dimensions. */
+.game-icon { display: inline-block !important; position: static !important; width: 1em !important; height: 1em !important; vertical-align: -.12em; overflow: hidden; pointer-events: none; }
+.icon-energia { filter: sepia(.45) saturate(1.5); }
+.energy-ready .icon-energia { filter: sepia(1) saturate(3) hue-rotate(65deg); }
+.energy-low .icon-energia, .warning .icon-energia { filter: sepia(1) saturate(4) hue-rotate(310deg); }
+.hud-energy .icon-energia { filter: sepia(1) saturate(3); }
+#turnStatus #turnBanner { font-size: 16px !important; }
+#briscolaBanner, #briscolaBanner span, #briscolaBanner b { font-size: 14px !important; }
+@media (max-width:600px), (pointer:coarse) { #turnStatus #turnBanner { font-size: 14px !important; } }
+header nav #onlineButton { position: static !important; width: 100% !important; grid-column: 1 / -1; font-size: 12px !important; }
+#arena .camera-mode { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 32px; padding: 0; z-index: 4; background: #0b2458e8; color: #eaf5ff; font-size: 22px; }
+#behindCamera { left: 12px; }
+#standardCamera { right: 12px; }

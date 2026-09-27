@@ -1,7 +1,7 @@
 import * as THREE from '../../vendor/three.module.min.js';
 
 export function configureArenaModel(root,family){
-  const accents={shield:0x0fa7ef,virus:0xbf1014,drone:0x66501a,radiation:0x4cdd4d,magicata:0xe870e9};
+  const accents={shield:0x0fa7ef,virus:0xbf1014,drone:0x66501a,radiation:0x329b42,magicata:0xe870e9};
   root.traverse(mesh=>{
     if(!mesh.isMesh)return;
     mesh.castShadow=true;mesh.receiveShadow=true;
@@ -11,7 +11,7 @@ export function configureArenaModel(root,family){
       // These accents were yellow on drones; neutral metal keeps its original color.
       if(hsl.s>.3){
         material.color.setHex(accents[family]);
-        if(material.emissive?.getHex())material.emissive.setHex(family==='drone'?0x080600:accents[family]);
+        if(material.emissive?.getHex())material.emissive.setHex(family==='drone'?0x080600:family==='radiation'?0x0b3011:accents[family]);
       }
     }
   });

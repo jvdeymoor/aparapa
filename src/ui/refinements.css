@@ -254,3 +254,6 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
 .stats .radiation-count { font-size: calc(1em + 2px); }
 #arena .camera-mode { display: grid; place-items: center; line-height: 1; }
 #arena .camera-mode svg { display: block; width: 20px; height: 20px; pointer-events: none; }
+
+/* Keep PLAYER2 against the right HUD edge without moving the center divider. */
+#arena #centerHud .core-hud.p2 { justify-content: flex-end; text-align: right; }

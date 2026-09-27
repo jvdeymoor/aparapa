@@ -1,1 +1,11 @@
-{"type":"module","scripts":{"start":"node server.js","test":"node tests/engine.test.js"},"dependencies":{"mongodb":"^6.12.0"}}
+{
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/engine.test.js && node tests/gameplay.test.js && node tests/ui-flow.test.js",
+    "test:api": "node tests/api.test.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.12.0"
+  }
+}

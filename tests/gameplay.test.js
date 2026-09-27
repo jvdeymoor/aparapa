@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {newGame,act,endTurn,autoPlay,availableActions,legal} from '../src/game/engine.js';
+import {newGame,act,endTurn,autoPlay,availableActions,legal,cardCost} from '../src/game/engine.js';
 import {CARD_POOL} from '../src/data/cards.js';
 import {SPRITE_NAMES,spriteStyle} from '../src/data/art.js';
 import {GLTFLoader} from '../vendor/GLTFLoader.js';
@@ -16,6 +16,7 @@ s=fixture();s.players[1].integrity=1;s.players[1].radiation=1;s.players[1].domin
 s=fixture();s.temp.reducedMoves[0]=-1;s=act(s,C,{type:'play',cardId:'scudo-1'});assert.equal(s.active,1);assert.equal(s.temp.reducedMoves[0],0,'move penalty lasts one turn');
 assert.equal(legal(fixture(),C,{type:'fake'}),'Azione sconosciuta');
 for(let seed=1;seed<=50;seed++){let game=newGame(C,seed),steps=0;while(game.winner===null&&steps++<1000)game=autoPlay(game,C);assert.notEqual(game.winner,null,`CPU game ${seed} must finish`);assert(game.players.every(p=>p.integrity>=0&&p.dominance>=0&&p.drones.every(d=>d.hp>0)))}
+s=fixture();s.briscola.name='SOVRACCARICO';const laser=CARD_POOL.find(c=>c.id==='laser-1');assert.equal(cardCost(s,laser),1);
 assert.equal(SPRITE_NAMES.length,67);assert.equal(new Set(SPRITE_NAMES).size,67);for(const card of CARD_POOL)assert(SPRITE_NAMES.includes(card.name),card.name);assert.equal(spriteStyle('hidden'),'background-position:100% 100%');assert.equal(SPRITE_NAMES.indexOf('Falso Positivo'),16);assert.equal(SPRITE_NAMES.indexOf('Corvo'),29);
 const manifest=JSON.parse(await readFile(new URL('../assets/models/orbital/manifest.json',import.meta.url)));
 let loaded=0;for(const files of Object.values(manifest.families))for(const file of files){const bytes=await readFile(new URL('../assets/models/orbital/'+file,import.meta.url));const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');let meshes=0;gltf.scene.traverse(o=>{if(o.isMesh){meshes++;assert(o.material)}});assert(meshes>0,file);loaded++}assert.equal(loaded,22);

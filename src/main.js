@@ -1,8 +1,9 @@
+import {installWideLayoutSizing} from './ui/wide-layout.js';
 import {gameIcon} from './ui/icons.js';
 import {spriteStyle} from './data/art.js';
 import{newGame,act,endTurn,autoPlay,legal,cardCost,isPreparing,readyPreparation,autoPrepare,dealsImmediateDamage,PREPARATION_WARNING}from'./game/engine.js';import{byId,CARD_POOL,DECK_CATEGORIES,DECK_LIMITS,DEFAULT_DECK_COUNTS}from'./data/cards.js';import{LocalGameAdapter}from'./storage/adapter.js';import{TableRenderer}from'./render/table.js';
 // Increment for each published UI revision.
-const APP_VERSION='v1.4';
+const APP_VERSION='v1.4.1';
 document.title='BRISCOLA MAGICATA';document.querySelector('.brand').innerHTML=`BRISCOLA <span>MAGICATA</span> <small>ASYNCHRONOUS CARD CONFLICT</small><span class="build-version">${APP_VERSION}</span>`;document.querySelector('.brand').style.visibility='visible';
 // Layout mobile: la mano scorre col pollice e Fine Turno resta sempre raggiungibile.
 document.head.insertAdjacentHTML('beforeend',`<style>.debug-ai{display:none!important}.card-preview{min-width:min(330px,88vw);border:2px solid var(--c);padding:14px;background:linear-gradient(150deg,#162952,#0c1026)}.card-preview>span{color:var(--c);font:13px monospace}.card-preview h2{font-size:28px;margin:12px 0}.card-preview .cost{font-size:21px;color:#ffe07a}.card-preview .warning{color:#ff6573}</style>`);
@@ -232,3 +233,5 @@ R.resize();
 $('#arena').insertAdjacentHTML('beforeend','<button id="behindCamera" class="camera-mode" aria-label="Camera dietro la tua cittadella"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button id="standardCamera" class="camera-mode" aria-label="Ripristina camera standard"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="8" y="8" width="8" height="8" fill="currentColor"/></svg></button>');
 $('#behindCamera').onclick=event=>{event.stopPropagation();R.behindView(localPlayerId())};
 $('#standardCamera').onclick=event=>{event.stopPropagation();R.resetView()};
+
+installWideLayoutSizing(document.querySelector('#app'));

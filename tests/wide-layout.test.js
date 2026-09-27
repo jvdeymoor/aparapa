@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {installWideLayoutSizing} from '../src/ui/wide-layout.js';
+let resize, result;
+const viewport={innerWidth:1200,devicePixelRatio:1,addEventListener(type,fn){resize=fn},removeEventListener(){resize=null}};
+const stop=installWideLayoutSizing({style:{setProperty(key,value){assert.equal(key,'--wide-layout-width');result=value}}},viewport);
+assert.equal(result,'900px');
+viewport.innerWidth=1600;viewport.devicePixelRatio=.75;resize();
+assert.equal(result,'900px','zoom-out must reduce visual size instead of expanding layout');
+resize();assert.equal(result,'900px','repeated resize notifications retain zoom');
+viewport.innerWidth=800;viewport.devicePixelRatio=1.5;resize();assert.equal(result,'900px','zoom-in keeps CSS width, allowing horizontal scroll');
+viewport.innerWidth=1000;resize();assert.equal(result,'750px','real window resize updates the 75% base');
+stop();assert.equal(resize,null);
+console.log('wide layout: 25% reduction, browser zoom in/out, repeated events and actual resizing: ok');

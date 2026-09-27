@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { MongoClient } from 'mongodb';
-import { newGame, act, endTurn } from './src/game/engine.js';
+import { newGame, act, endTurn, settleTurn } from './src/game/engine.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -57,7 +57,10 @@ const server = createServer(async (req, res) => {
       const game = await load(parts[2]); if (!game) return json(res, 404, { error:'Partita non trovata' });
       if (game.closedMessage) return json(res, 410, { error:game.closedMessage });
       const player = playerOf(game, req.headers.authorization?.replace('Bearer ', '')); if (player < 0) return json(res, 401, { error:'Accesso non valido' });
-      if (req.method === 'GET') return json(res, 200, publicState(game, player));
+      if (req.method === 'GET') {
+        if (game.state) { const settled = settleTurn(game.state, CONFIG); if (settled !== game.state) { game.state = settled; game.updatedAt = new Date(); await save(game); } }
+        return json(res, 200, publicState(game, player));
+      }
       if (req.method === 'POST' && parts[3] === 'leave') {
         game.closedMessage = `P${player + 1} è uscito dalla partita.`;
         game.state = null; game.deckCounts = null; game.tokens = [];

@@ -1,4 +1,4 @@
-const cat={SCUDO:['⬡','#54d6ff'],VIRUS:['⌘','#ff354c'],DRONE:['◈','#f6c84b'],RADIAZIONE:['☢','#a7ff3e'],LASER:['↯','#ff354c'],MAGICATA:['✦','#ff354c']};
+const cat={SCUDO:['⬡','#0fa7ef'],VIRUS:['⌘','#bf1014'],DRONE:['◈','#ffed9a'],RADIAZIONE:['☢','#4cdd4d'],LASER:['↯','#fb8920'],MAGICATA:['✦','#e870e9']};
 const make=(category,names,base)=>names.map((name,i)=>({id:`${category.toLowerCase()}-${i+1}`,name,category,cost:base.cost+(i%2),rarity:i>7?'rara':'comune',description:base.desc(i),icon:cat[category][0],color:cat[category][1],...base.values(i),tags:[category]}));
 export const CARD_POOL=[
 ...make('SCUDO',['Barriera Ionica','Muro Prisma','Scudo Rigenerante','Velo Anti-Laser','Cupola Sacrificale','Deflettore Orbitale','Piastra Quantica','Baluardo Ricorsivo','Specchio di Fase','Rete Anti-Radiazione'],{cost:1,desc:i=>`Installa uno Scudo con ${2+i%4} protezione.`,values:i=>({effect:'shield',amount:2+i%4})}),

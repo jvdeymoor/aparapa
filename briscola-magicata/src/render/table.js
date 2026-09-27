@@ -1,9 +1,10 @@
+import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import * as THREE from '../../vendor/three.module.min.js';
 
 // Scena volutamente minimale: nessuna luce, ombra, foschia o effetto.
 export class TableRenderer {
   constructor(element, config) {
-    this.el = element;
+    this.el = element;this.models=new Map();this.variants=new Map();this.lastState=null;this.loadModels();
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x182234);
     this.target = new THREE.Vector3(0, 0, 0);
@@ -92,63 +93,53 @@ export class TableRenderer {
   }
   fireLaser(owner) {
     const start = owner ? 5.1 : -5.1, end = owner ? -5.1 : 5.1;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshStandardMaterial({ color: 0xff354c, emissive: 0xff1025, emissiveIntensity: 2 }));
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshStandardMaterial({ color: 0xfb8920, emissive: 0xfb8920, emissiveIntensity: 2 }));
     mesh.castShadow = true;
     this.units.add(mesh);
     this.lasers.push({ mesh, start, end, started: performance.now() });
   }
+  async loadModels() {
+    const loader=new GLTFLoader();
+    const base=new URL('../../assets/models/orbital/',import.meta.url);
+    try {
+      const manifest=await fetch(new URL('manifest.json',base)).then(r=>r.json());
+      await Promise.all(Object.entries(manifest.families).flatMap(([family,files])=>files.map(async(file,i)=>{
+        const {scene}=await loader.loadAsync(new URL(file,base).href);
+        // Supplied assets use Z as their vertical axis.
+        scene.rotation.x=-Math.PI/2;
+        const wrapper=new THREE.Group();wrapper.add(scene);
+        const bounds=new THREE.Box3().setFromObject(wrapper),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+        scene.position.sub(center);
+        wrapper.scale.setScalar((family==='citadel'?2.1:family==='drone'?.8:.6)/Math.max(size.x,size.y,size.z));
+        const accents={shield:0x0fa7ef,virus:0xbf1014,drone:0xffed9a,radiation:0x4cdd4d,magicata:0xe870e9};
+        scene.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=true;mesh.receiveShadow=true;const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];materials.forEach(mat=>{if(accents[family]&&mat.color){const hsl={};mat.color.getHSL(hsl);if(hsl.s>.3){mat.color.setHex(accents[family]);if(mat.emissive?.getHex())mat.emissive.setHex(accents[family])}}})});
+        this.models.set(`${family}-${i}`,wrapper);
+      })));
+      if(this.lastState){this.stateSignature=null;this.update(this.lastState)}
+    }catch(error){console.error('Caricamento modelli arena:',error)}
+  }
+  model(family,key,size=4) {
+    if(!this.variants.has(key))this.variants.set(key,Math.floor(Math.random()*size));
+    const template=this.models.get(`${family}-${this.variants.get(key)}`);
+    return template?template.clone(true):new THREE.Group();
+  }
   update(state) {
-    this.units.clear();
-    this.orbiters = [];
-    this.floaters = [];
-    this.lasers = [];
-    this.impacts = [];
-    const marker = (x, z, color, size = 0.55) => {
-      const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0.18 }));
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(x, 0.03, z);
-      mesh.castShadow = true;
-      this.units.add(mesh);
-    };
-    const core = (x, color) => {
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 14), new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.32 }));
-      mesh.position.set(x, 0.8, 0);
-      mesh.castShadow = true;
-      this.units.add(mesh);
-    };
-    const droneCube = (x, z) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.52), new THREE.MeshStandardMaterial({ color: 0x59636e, roughness: 0.48, metalness: 0.35 }));
-      mesh.position.set(x, 0.28, z);
-      mesh.castShadow = true;
-      this.units.add(mesh);
-    };
-    const shieldPlate = (coreX, direction, index, total) => {
-      // Faccia quasi pari allo sprite precedente, ma con uno spessore molto ridotto.
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.36), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.48 }));
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      this.units.add(mesh);
-      this.orbiters.push({ mesh, coreX, direction, phase: (index / Math.max(1, total)) * Math.PI * 2 });
-    };
-    const floatingEffect = (coreX, index, kind) => {
-      const geometry = kind==='virus'?new THREE.ConeGeometry(0.24, 0.5, 4):new THREE.OctahedronGeometry(0.24);
-      const material = new THREE.MeshStandardMaterial({ color: kind==='virus'?0xff354c:0xa7ff3e, emissive: kind==='virus'?0x5b0010:0x294d00, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.25 });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.castShadow = true;
-      this.units.add(mesh);
-      this.floaters.push({ mesh, coreX, phase:index*.9, radius:.52+index*.08 });
-    };
-    state.players.forEach((player, index) => {
-      const side = index ? 5.8 : -5.8;
-      const direction = index ? -1 : 1;
-      core(side, index ? 0xe3485c : 0x238fc3);
-      player.drones.forEach((drone, number) => {
-        const row = Math.floor(number / 5), column = number % 5;
-        droneCube(side + direction * (1.7 + row * 0.72), -1.5 + column * 0.75);
-      });
-      player.shields.forEach((shield, number) => shieldPlate(side, direction, number, player.shields.length));
-      player.viruses.forEach((virus, number) => floatingEffect(side, number, 'virus'));
-      for(let number=0;number<player.radiation;number++)floatingEffect(side, number+player.viruses.length, 'radiation');
+    this.lastState=state;
+    const signature=JSON.stringify([state.gameId,state.players.map(p=>[p.shields,p.drones,p.viruses,p.radiation]),state.history[0]?.actionId]);
+    if(signature===this.stateSignature)return;
+    this.stateSignature=signature;
+    if(this.gameId!==state.gameId){this.gameId=state.gameId;this.variants.clear()}
+    this.units.clear();this.orbiters=[];this.floaters=[];this.lasers=[];this.impacts=[];
+    state.players.forEach((player,index)=>{
+      const side=index?5.8:-5.8,direction=index?-1:1;
+      const core=this.model('citadel',`core-${index}`,2);core.position.set(side,.8,0);this.units.add(core);
+      player.drones.forEach((drone,n)=>{const mesh=this.model('drone',drone.uid);mesh.position.set(side+direction*(1.7+Math.floor(n/5)*.85),.5,-1.5+n%5*.75);this.units.add(mesh)});
+      player.shields.forEach((shield,n)=>{const mesh=this.model('shield',shield.uid||`${index}-shield-${shield.name}-${n}`);this.units.add(mesh);this.orbiters.push({mesh,coreX:side,direction,phase:n/Math.max(1,player.shields.length)*Math.PI*2})});
+      const floating=(kind,key,n)=>{const mesh=this.model(kind,key);this.units.add(mesh);this.floaters.push({mesh,coreX:side,phase:n*.9,radius:.65+n*.08})};
+      player.viruses.forEach((v,n)=>floating('virus',v.uid||`${index}-virus-${v.name}-${n}`,n));
+      for(let n=0;n<player.radiation;n++)floating('radiation',player.radiationUnits?.[n]||`${index}-rad-${n}`,n+player.viruses.length);
+      const magic=state.history.find(h=>h.playerId===index&&h.type==='magic'&&h.turnId>=state.turnId-1);
+      if(magic)floating('magicata',magic.actionId,0);
     });
   }
   tick() {
@@ -157,7 +148,7 @@ export class TableRenderer {
       const angle = orbiter.phase + time;
       orbiter.mesh.position.set(orbiter.coreX + Math.cos(angle) * 1.16, 0.3, Math.sin(angle) * 1.16);
       // Piastra verticale: la faccia è rivolta verso la corsia dei propri Droni.
-      orbiter.mesh.rotation.set(0, 0, orbiter.direction * Math.PI / 2);
+      orbiter.mesh.rotation.y=angle;
     });
     this.floaters.forEach(floater => {
       const angle=time*1.8+floater.phase;

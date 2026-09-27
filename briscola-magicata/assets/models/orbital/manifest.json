@@ -1,0 +1,42 @@
+{
+  "format": "glTF Binary (.glb)",
+  "units": "arbitrary game units; models centered near origin",
+  "forward_hint": "Use each GLB root as a prefab; citadel asteroid center is origin, fortress sits on +Z surface.",
+  "families": {
+    "drone": [
+      "drone_01.glb",
+      "drone_02.glb",
+      "drone_03.glb",
+      "drone_04.glb"
+    ],
+    "shield": [
+      "shield_01.glb",
+      "shield_02.glb",
+      "shield_03.glb",
+      "shield_04.glb"
+    ],
+    "virus": [
+      "virus_01.glb",
+      "virus_02.glb",
+      "virus_03.glb",
+      "virus_04.glb"
+    ],
+    "radiation": [
+      "radiation_01.glb",
+      "radiation_02.glb",
+      "radiation_03.glb",
+      "radiation_04.glb"
+    ],
+    "magicata": [
+      "magicata_01.glb",
+      "magicata_02.glb",
+      "magicata_03.glb",
+      "magicata_04.glb"
+    ],
+    "citadel": [
+      "citadel_01.glb",
+      "citadel_02.glb"
+    ]
+  },
+  "note": "Laser excluded as requested. Materials/colors are embedded in each GLB; no external texture files are required."
+}

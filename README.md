@@ -1,34 +1,60 @@
 # BRISCOLA MAGICATA
 
-Gioco di carte strategico futuristico per due giocatori, progettato per turni asincroni senza timer. È completamente locale: non invia dati, non richiede account, server, installazioni o connessione per giocare.
+Gioco di carte con CPU locale e multiplayer a turni, anche asincrono.
+Gioco pubblico: https://aparapa.com/briscola-magicata/
 
-## Avvio
+## Un solo progetto, un solo push
 
-Chrome/Edge normalmente permettono di aprire semplicemente `index.html`. Firefox, per protezione, può bloccare i moduli JavaScript quando un file viene aperto come `file://`: in quel caso fai doppio clic su `Avvia-NEON-WAR.desktop` oppure esegui `./avvia-neon-war.sh`. Avvia un piccolo server **solo su questo computer** (`127.0.0.1:8765`) e apre il gioco; non scarica né invia dati. La libreria Three.js è già inclusa in `vendor/`; non c'è CDN né build da eseguire.
+La sorgente da modificare è **NEON-WAR**, ramo **release-multiplayer** del repository
+`jvdeymoor/aparapa`. La cartella locale è `/home/f/NEON-WAR`.
 
-## Come giocare
+In GitHub Desktop basta fare commit e **Push origin** da quel progetto/ramo.
+Il push aggiorna il backend Render e avvia il workflow **Pubblica BRISCOLA MAGICATA**:
 
-Scegli una carta nella mano; cliccala una seconda volta per usarla contro l'avversario. I Drone possono attaccare con il loro pulsante. Hai due mosse, poi premi **Fine Turno**. Il gioco viene salvato automaticamente nel browser; i controlli in alto permettono anche Salva, Esporta, Importa e Reset.
+1. Esegue i test del gioco e delle API.
+2. Aspetta che Render serva lo stesso commit.
+3. Genera soltanto i file necessari al browser in `main:briscola-magicata/`.
+4. Crea automaticamente il commit sul ramo del sito e richiede il build GitHub Pages.
 
-Vinci portando l'Integrità del Nucleo nemico a zero o iniziando tre tuoi turni consecutivi con almeno 10 Dominio.
+**Non modificare o copiare a mano il gioco in aparapa-main e non fare il secondo push.**
+La cartella pubblica è un risultato generato, non un altro progetto da mantenere.
+Gli altri progetti del sito, la home e il dominio non vengono sostituiti.
+Il vecchio worktree locale del sito può restare disponibile per gli altri progetti;
+prima di modificarli esegui Fetch/Pull, perché il bot può avere aggiornato `main`.
 
-## Configurazione semplice
+## Configurazione di pubblicazione
 
-All'inizio di `index.html` c'è la sezione `window.CONFIG`, con commenti italiani. Da lì puoi cambiare regole, colori, tavolo, carte, camera, luci, audio, animazioni e debug. `UI_TEXT_SCALE:1.12` applica una scala reale del 12% all'interfaccia, compresi i testi definiti in pixel (ad esempio usa `1.25` per il 25%). I percorsi sostituibili degli asset sono in `CONFIG.IMAGES`; sono predisposte le cartelle `assets/images`, `assets/icons`, `assets/textures` e `assets/audio`.
+Non servono nuove chiavi o token personali: il workflow usa `GITHUB_TOKEN`, con
+`contents: write` e `pages: write` soltanto nel job di pubblicazione.
+Si appoggia alla configurazione esistente:
 
-## Struttura
+- Render: repository `jvdeymoor/aparapa`, ramo `release-multiplayer`, deploy automatico
+  a ogni commit, comandi `npm install` e `npm start`, variabili MongoDB/CORS già impostate.
+- GitHub Pages: **Deploy from a branch**, ramo **main**, cartella **/ (root)**,
+  dominio **aparapa.com**. Non passare a una diversa sorgente Pages per questa procedura.
+- GitHub Actions deve essere abilitato; le protezioni di `main` devono consentire al
+  workflow il commit generato. Non viene usato force-push e non vengono cambiate protezioni.
 
-- `src/game/engine.js`: regole, azioni valide e stato deterministico.
-- `src/data/cards.js`: pool carte (10 Scudi, 10 Virus, 15 Drone, 10 Radiazioni, 12 Laser, 10 Magicate, 12 Briscole).
-- `src/render/table.js`: tavolo e pedine Three.js.
-- `src/ui/`: interfaccia responsive.
-- `src/storage/adapter.js`: salvataggio locale e contratto futuro Node.
-- `tests/`: test del motore.
+I commit del token Actions non avviano Pages da soli: lo script chiede esplicitamente
+il build tramite l'[API ufficiale Pages](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build).
+`/api/health` espone il commit Render per verificare l'ordine backend → frontend,
+utilizzando [RENDER_GIT_COMMIT](https://render.com/docs/environment-variables).
 
-## Aggiungere carte e futuro Node
+Il primo avvio remoto si verifica dopo il primo push che contiene il workflow.
+Se fallisce, apri GitHub → Actions → Pubblica BRISCOLA MAGICATA e leggi il passaggio
+rosso. Dopo la correzione puoi usare **Re-run failed jobs**. Un errore nei test,
+nel deploy Render o nella configurazione Pages ferma la pubblicazione del frontend.
+Se `main` è avanzato durante l'export, il push viene rifiutato senza sovrascrivere
+il lavoro altrui: riesegui il job, che rilegge il ramo più recente.
 
-Aggiungi dati in `src/data/cards.js`: ogni carta ha id, categoria, costo, rarità, descrizione, valori e tag. La logica è separata dall'interfaccia. Per il multiplayer futuro, sostituisci `LocalGameAdapter` con `NodeGameAdapter`: il server deve validare `gameId`, `playerId`, `turnId` e `actionId` in modo autoritativo. Non è incluso né avviato alcun server remoto.
+## Sviluppo locale
 
-## Verifica
+- `npm ci` installa le dipendenze bloccate nel lockfile.
+- `npm start` avvia il server locale; senza MONGODB_URI usa memoria temporanea.
+- `npm test` verifica gioco, interfaccia simulata e pubblicazione.
+- `PORT=3011 npm start` e poi `npm run test:api` verificano il multiplayer locale.
+- `./avvia-neon-war.sh` resta disponibile per l'anteprima statica locale.
 
-Per chi vuole controllare il motore: `npm test`. L'uso normale resta l'apertura di `index.html`.
+Le regole sono in `src/game/engine.js`, le carte in `src/data/cards.js`, l'interfaccia
+in `src/main.js` e `src/ui/`, la scena in `src/render/`, le API in `server.js`.
+Per le funzioni di gioco e il multiplayer vedi [README_MULTIPLAYER.md](README_MULTIPLAYER.md).

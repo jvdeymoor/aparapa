@@ -52,6 +52,7 @@ const server = createServer(async (req, res) => {
   let unlock;
   try {
     const url = new URL(req.url, `http://${req.headers.host}`), parts = url.pathname.split('/').filter(Boolean);
+    if(req.method==='GET'&&url.pathname==='/api/health')return json(res,200,{ok:true,commit:process.env.RENDER_GIT_COMMIT||null});
     if(parts[0]==='api'&&parts[1]==='games'&&parts[2])unlock=await lockRoom(parts[2]);
     if (req.method === 'POST' && url.pathname === '/api/games') {
       const input = await body(req), game = { code:code(), tokens:[token(), null], deckCounts:[input.deckCounts, null], state:null, createdAt:new Date(), updatedAt:new Date() };

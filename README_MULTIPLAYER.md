@@ -1,5 +1,9 @@
 # BRISCOLA MAGICATA — singleplayer e multiplayer
 
+**Sorgente unica:** modifica NEON-WAR / release-multiplayer e fai un solo push.
+Il workflow genera e pubblica la cartella del sito; non sincronizzarla manualmente.
+Procedura e requisiti in [README.md](README.md).
+
 Il frontend pubblico è https://aparapa.com/briscola-magicata/ (GitHub Pages).
 L'API multiplayer è https://aparapa.onrender.com (Node e MongoDB Atlas), configurata
 in `window.CONFIG.MULTIPLAYER_API`. `ALLOWED_ORIGINS` abilita CORS per aparapa.com.

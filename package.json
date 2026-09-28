@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/engine.test.js && node tests/gameplay.test.js && node tests/ui-flow.test.js && node tests/space.test.js && node tests/preparation.test.js && node tests/effects.test.js && node tests/wide-layout.test.js && node tests/presentation.test.js",
+    "test": "node tests/engine.test.js && node tests/gameplay.test.js && node tests/ui-flow.test.js && node tests/space.test.js && node tests/preparation.test.js && node tests/effects.test.js && node tests/wide-layout.test.js && node tests/presentation.test.js && node tests/publishing.test.js",
     "test:api": "node tests/api.test.js"
   },
   "dependencies": {

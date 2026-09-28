@@ -1,0 +1,90 @@
+name: Pubblica BRISCOLA MAGICATA
+
+on:
+  push:
+    branches: [release-multiplayer]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-briscola
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Test API multiplayer locale
+        shell: bash
+        run: |
+          PORT=3011 node server.js > /tmp/briscola-api.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:3011/ > /dev/null; then break; fi
+            sleep 1
+          done
+          npm run test:api
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - name: Sorgente unica, esattamente il commit verificato
+        uses: actions/checkout@v5
+        with:
+          path: game
+          persist-credentials: false
+      - name: Sito esistente, inclusi gli altri progetti
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: site
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Verifica la configurazione attuale di Pages
+        run: node game/scripts/pages-build.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          BRISCOLA_PAGES_MODE: check
+      - name: Attendi il backend della stessa revisione prima del frontend
+        run: node game/scripts/wait-render.mjs
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          BRISCOLA_WAIT_RENDER: '1'
+      - name: Genera solo briscola-magicata e aggiorna main
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          node game/scripts/publish-site.mjs game site
+          git -C site config user.name 'github-actions[bot]'
+          git -C site config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C site add -- briscola-magicata
+          if ! git -C site diff --cached --quiet; then
+            git -C site commit -m "Publish Briscola from ${SOURCE_SHA}"
+            git -C site push origin HEAD:main
+          fi
+      - name: Avvia esplicitamente la pubblicazione GitHub Pages
+        run: node game/scripts/pages-build.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          BRISCOLA_PAGES_MODE: build

@@ -130,3 +130,20 @@ poi esegui `npm run test:api`. Il test crea e chiude una stanza locale.
 Mantieni sincronizzata la copia `/home/f/aparapa-main/briscola-magicata/`.
 In GitHub Desktop invia i commit da NEON-WAR / release-multiplayer per Render,
 e da aparapa-main / pubblica-briscola (upstream origin/main) per il sito pubblico.
+
+### Opponent animations and damage report (v1.5)
+
+The server remains authoritative and does not wait for animations. Confirmed plays
+and drone attacks append numbered `presentationEvents` (last 120 events, only
+already played card IDs). Clients consume these in order, deduplicate repeated
+polls, and skip historical animations on initial load. While the local presentation
+queue is busy, new game actions are disabled; polling can still update the latest
+state. The singleplayer CPU schedules its next action after this queue finishes.
+Changing games cancels pending presentations. No animation changes turn order,
+energy, damage or server authorization.
+
+`damageHistory` retains every recorded hit for the current game, including local
+ISO timestamp, turn, target, damage type, source card name and separate shield,
+drone and core damage. The report includes damage absorbed by defenses; it does
+not reconstruct hits from older saves that predate this field. Radiation charge
+IDs retain their source card name even when a Magicata swaps their target.

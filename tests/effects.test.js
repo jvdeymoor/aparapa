@@ -22,3 +22,9 @@ r.collectDamage({...state,gameId:'another-game'});assert.equal(r.effectQueue.len
 assert.equal(radiationBatch('r-12-2-0'),radiationBatch('r-12-2-5'));
 r.behindView(0);assert(r.camera.position.x<0);assert(r.target.x>0);r.zoomBy(1);assert(r.camera.zoom>1);r.behindView(1);assert(r.camera.position.x>0);assert(r.target.x<0);r.resetView();assert.equal(r.cameraMode,'standard');assert.equal(r.camera.position.z,16.5);
 console.log('effects: authoritative damage, polling deduplication, rebuild continuity, cleanup, radiation batches and both camera sides: ok');
+// Renderer cannot launch a queued attack until the presentation coordinator permits it.
+r.sequenced=true;r.collectDamage({...state,gameId:'sequenced',nextVisualId:0,visualEvents:[]});r.collectDamage({...state,gameId:'sequenced'});
+r.advanceEffects(7000);assert.equal(r.lasers.length,0);
+const first=r.effectQueue[0],abort=new AbortController();let complete=false;
+const done=r.playDamage(first,abort.signal).then(()=>complete=true);r.advanceEffects(7100);assert.equal(r.lasers.length,1);assert(!complete);r.advanceEffects(7700);await done;assert(complete);r.advanceEffects(8000);assert.equal(r.lasers.length,0,'next attack stays blocked');
+console.log('arena sequence: waits for card/audio permission and resolves on attack completion: ok');

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {access} from 'node:fs/promises';
-import {AUDIO_FILES,GameAudio,actionSound,reverseBuffer} from '../src/ui/audio.js';
+import {AUDIO_FILES,GameAudio,actionSound,reverseBuffer,effectGain} from '../src/ui/audio.js';
 for(const file of Object.values(AUDIO_FILES))await access(new URL('../assets/audio/samples/'+file,import.meta.url));
 for(const [cardId,sound] of [['drone-1','drone'],['virus-1','virus'],['radiazione-1','radiation'],['laser-1','laser'],['scudo-1','shield'],['magicata-1','magic']])assert.equal(actionSound({kind:'play',cardId}),sound);
 assert.equal(actionSound({kind:'attack',cardId:'drone-1'}),'attackDrone');
@@ -16,4 +16,8 @@ state.phase='preparation';state.presentationEvents.push({id:4,player:1,kind:'pla
 state.gameId='b';state.nextPresentationId=4;audio.observe(state,0);assert.equal(heard.length,2);
 console.log('audio: assets, type mapping, stereo reverse, no history replay or duplicate polling/opponent sounds: ok');
 
-const levels=new GameAudio();assert.deepEqual(levels.levels,{music:.5,effects:.5});levels.music={volume:.5};levels.setLevel('music',.2);assert.equal(levels.music.volume,.2);levels.setLevel('effects',2);assert.equal(levels.levels.effects,1);levels.setLevel('effects',-1);assert.equal(levels.levels.effects,0);
+const levels=new GameAudio();assert.deepEqual(levels.levels,{music:.15,effects:.5});levels.music={volume:.5};levels.setLevel('music',.2);assert.equal(levels.music.volume,.2);levels.setLevel('effects',2);assert.equal(levels.levels.effects,1);levels.setLevel('effects',-1);assert.equal(levels.levels.effects,0);
+
+const buffer=value=>({numberOfChannels:1,getChannelData:()=>new Float32Array([value,-value,value,-value])});
+assert(Math.abs(effectGain(buffer(.4))*.4-effectGain(buffer(.1))*.1)<1e-6);
+let stopped=0,paused=0,suspended=0;const bg=new GameAudio();bg.music={pause(){paused++}};bg.sources.add({stop(){stopped++}});bg.context={suspend(){suspended++;return Promise.resolve()}};bg.setBackground(true);assert(bg.background);assert.equal(stopped,1);assert.equal(paused,1);assert.equal(suspended,1);let resumed=0;bg.unlock=async()=>resumed++;bg.setBackground(false);assert.equal(resumed,1);

@@ -11,7 +11,7 @@ function damage(s,pid,n,reason,sourceUid=null,sourceName=null){
   if(p.integrity<=0)s.winner=1-pid;
   if(n>0){
     s.nextVisualId=(s.nextVisualId||0)+1;
-    const event={id:s.nextVisualId,target:pid,owner:reason==='esaurimento del mazzo'?pid:1-pid,kind:reason,sourceUid,sourceName:sourceName||null,amount:shieldDamage+droneDamage+before-p.integrity,shieldDamage,droneDamage,coreDamage:before-p.integrity,turnId:s.turnId,at:new Date().toISOString()};
+    const event={id:s.nextVisualId,afterPresentationId:s.nextPresentationId||0,target:pid,owner:reason==='esaurimento del mazzo'?pid:1-pid,kind:reason,sourceUid,sourceName:sourceName||null,amount:shieldDamage+droneDamage+before-p.integrity,shieldDamage,droneDamage,coreDamage:before-p.integrity,turnId:s.turnId,at:new Date().toISOString()};
     s.visualEvents=[...(s.visualEvents||[]),event].slice(-120);
     (s.damageHistory??=[]).push(event);
   }

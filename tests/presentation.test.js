@@ -35,3 +35,14 @@ const cancellable=new OpponentPresenter(()=>completed++,()=>new Promise(resolve=
 cancellable.observe(state,0);cancellable.observe({...state,presentationEvents:events.slice(0,1),nextPresentationId:1},0);
 cancellable.observe({...state,gameId:'new-game'},0);delayed.shift()();await new Promise(resolve=>setImmediate(resolve));assert.equal(completed,0);assert(!cancellable.busy);
 console.log('presentation: complete damage history and game-change cancellation: ok');
+// A polling batch must finish each card/sound AND its arena attack before the next card.
+const sequence=[],pending=[];
+const step=label=>{sequence.push(label);return new Promise(resolve=>pending.push(resolve))};
+const battle=new OpponentPresenter(()=>sequence.push('idle'),event=>step('opponent-'+event.id),{local:event=>step('local-'+event.id),damage:event=>step('damage-'+event.id)});
+battle.observe({gameId:'sequence',nextPresentationId:0,nextVisualId:0},0);
+const batch={gameId:'sequence',nextPresentationId:2,nextVisualId:3,phase:'battle',presentationEvents:[{id:1,player:0,cardId:'laser-1'},{id:2,player:1,cardId:'drone-1'}],visualEvents:[{id:1,afterPresentationId:1},{id:2,afterPresentationId:1},{id:3,afterPresentationId:2}]};
+battle.observe(batch,0);battle.observe(batch,0);assert.deepEqual(sequence,['local-1']);
+for(const expected of ['damage-1','damage-2','opponent-2','damage-3','idle']){pending.shift()();await new Promise(resolve=>setImmediate(resolve));assert.equal(sequence.at(-1),expected)}
+assert(!battle.busy);assert.equal(sequence.length,6);
+assert.equal(d.visualEvents[0].afterPresentationId,d.presentationEvents[0].id);
+console.log('battle sequence: local and opponent card/sound, corresponding arena damage, automatic damage, deduplication: ok');

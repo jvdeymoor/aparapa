@@ -1,4 +1,3 @@
-import {gameAudio} from '../ui/audio.js';
 import {configureArenaModel,createArenaSun} from './materials.js';
 import { SpaceBackdrop, FORMATION_DISTANCE, ZOOM_LIMITS } from './space.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
@@ -107,8 +106,11 @@ export class TableRenderer {
       this.seenVisual=event.id;
     }
   }
+  playDamage(event,signal) {
+    if(signal.aborted)return Promise.resolve();
+    return new Promise(resolve=>{const finish=()=>{this.damageWaiters?.delete(event.id);signal.removeEventListener('abort',finish);resolve()};this.damageWaiters??=new Map();this.damageWaiters.set(event.id,finish);signal.addEventListener('abort',finish,{once:true})});
+  }
   startDamage(event,now) {
-    if(event.kind==='virus'||event.kind==='radiazione')void gameAudio.play(event.kind==='virus'?'attackVirus':'attackRadiation');
     const target=new THREE.Vector3((event.target?1:-1)*FORMATION_DISTANCE,.8,0);
     const family=event.kind==='virus'?'virus':event.kind==='radiazione'?'radiation':null;
     const color=family==='virus'?0xff345d:family?0x66bd65:event.kind==='drone'?0x8bdcff:0xffa340;
@@ -117,16 +119,16 @@ export class TableRenderer {
     const start=event.start|| (family?target.clone().add(new THREE.Vector3(.5,2,0)):new THREE.Vector3((event.owner?1:-1)*FORMATION_DISTANCE,.8,0));
     if(event.kind==='esaurimento del mazzo')start.copy(target).add(new THREE.Vector3(0,2,0));
     mesh.position.copy(start);this.effects.add(mesh);
-    this.lasers.push({mesh,start,end:target,started:now,color,owned:!family});
+    this.lasers.push({mesh,start,end:target,started:now,eventId:event.id,color,owned:!family});
   }
   advanceEffects(now) {
-    if(!this.lasers.length&&this.effectQueue.length)this.startDamage(this.effectQueue.shift(),now);
+    if(!this.lasers.length&&this.effectQueue.length&&(!this.sequenced||this.damageWaiters?.has(this.effectQueue[0].id)))this.startDamage(this.effectQueue.shift(),now);
     this.lasers=this.lasers.filter(effect=>{
       const t=Math.min(1,(now-effect.started)/550);effect.mesh.position.lerpVectors(effect.start,effect.end,t);
       if(t<1)return true;
       this.effects.remove(effect.mesh);if(effect.owned){effect.mesh.geometry.dispose();effect.mesh.material.dispose()}
       const mesh=new THREE.Mesh(new THREE.OctahedronGeometry(.24),new THREE.MeshBasicMaterial({color:effect.color,transparent:true,opacity:.8}));
-      mesh.position.copy(effect.end);this.effects.add(mesh);this.impacts.push({mesh,until:now+220});return false;
+      mesh.position.copy(effect.end);this.effects.add(mesh);this.impacts.push({mesh,until:now+220});this.damageWaiters?.get(effect.eventId)?.();return false;
     });
     this.impacts=this.impacts.filter(effect=>{const remaining=(effect.until-now)/220;if(remaining<=0){this.effects.remove(effect.mesh);effect.mesh.geometry.dispose();effect.mesh.material.dispose();return false}effect.mesh.scale.setScalar(1+(1-remaining)*2);effect.mesh.material.opacity=remaining;return true});
   }

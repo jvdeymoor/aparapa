@@ -1,3 +1,4 @@
+import {gameAudio} from '../ui/audio.js';
 import {configureArenaModel,createArenaSun} from './materials.js';
 import { SpaceBackdrop, FORMATION_DISTANCE, ZOOM_LIMITS } from './space.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
@@ -107,6 +108,7 @@ export class TableRenderer {
     }
   }
   startDamage(event,now) {
+    if(event.kind==='virus'||event.kind==='radiazione')void gameAudio.play(event.kind==='virus'?'attackVirus':'attackRadiation');
     const target=new THREE.Vector3((event.target?1:-1)*FORMATION_DISTANCE,.8,0);
     const family=event.kind==='virus'?'virus':event.kind==='radiazione'?'radiation':null;
     const color=family==='virus'?0xff345d:family?0x66bd65:event.kind==='drone'?0x8bdcff:0xffa340;

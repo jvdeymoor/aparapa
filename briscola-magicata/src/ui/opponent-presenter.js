@@ -1,3 +1,4 @@
+import {gameAudio,actionSound} from './audio.js';
 import {byId} from '../data/cards.js';
 import {spriteStyle} from '../data/art.js';
 import {cardName} from './card-details.js';
@@ -17,6 +18,7 @@ export class OpponentPresenter {
 }
 async function animateCard(event,signal){
  const card=byId(event.cardId);if(!card||signal.aborted)return;
+ void gameAudio.play('card');
  const player=document.querySelectorAll('#mobileStatus .mobile-player')[event.player];
  const box=player?.getBoundingClientRect();
  const hand=document.querySelector('#hand .card-back')?.getBoundingClientRect()||document.querySelector('#hand')?.getBoundingClientRect();
@@ -36,6 +38,7 @@ async function animateCard(event,signal){
   await run(layer,[{transform:`${offset(from)} scale(.55)`,opacity:1},{transform:'translate(0,0) scale(1)',opacity:1}],{duration:800,easing:'ease-out'});
   if(event.kind!=='attack')await run(inner,[{transform:'rotateY(0deg)'},{transform:'rotateY(180deg)'}],{duration:500,easing:'ease-in-out'});
   await run(layer,[{opacity:1},{opacity:1}],{duration:event.kind==='attack'?1200:1800});
+  if(!signal.aborted)void gameAudio.play(actionSound(event));
   await run(layer,event.kind==='attack'?[{opacity:1},{opacity:0}]:[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`${offset(to)} scale(.05)`,opacity:0}],{duration:event.kind==='attack'?600:800,easing:'ease-in'});
  }finally{signal.removeEventListener('abort',abort);layer.remove()}
 }

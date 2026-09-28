@@ -398,3 +398,26 @@ header > #rulesButton, header > #menuButton { order: 2; }
 @media (orientation: landscape), (min-width: 601px) and (pointer: fine) {
  header > #damageButton { min-width: 9.23cqw; height: 11.282cqw; min-height: 11.282cqw; font-size: 7.692cqw; }
 }
+
+/* Desktop only: dialogs have the same fixed-CSS-width zoom behavior as the game. */
+@media (min-width: 601px) and (pointer: fine) {
+  #modalRoot { zoom: 1 !important; }
+  #modalRoot .modal > article { width: min(var(--desktop-dialog-width,980px),calc(100vw - 32px)); max-width: none; font-size: 20px; padding: 24px; }
+  #modalRoot .modal h2 { font-size: 30px; }
+  #modalRoot .modal button, #modalRoot .modal input { font-size: 20px; min-height: 46px; }
+  #modalRoot .online-deck-builder label { font-size: 22px; }
+  #modalRoot .online-deck-builder p, #modalRoot .preparation-help { font-size: 20px; }
+  #modalRoot [data-kind="preparation"] article { width: min(var(--desktop-dialog-width,980px),calc(100vw - 32px)); max-width: none; }
+  #modalRoot .illustrated-manual p, #modalRoot .illustrated-manual li { font-size: 20px !important; }
+  #modalRoot .illustrated-manual h2 { font-size: 30px !important; }
+  #modalRoot .illustrated-manual h3 { font-size: 24px !important; }
+  #modalRoot [data-kind="player-panel"] article { width: 75vw; max-width: 75vw; }
+}
+#modalRoot [data-kind="fine"] #closeModal { width: 50%; margin-left: auto; margin-right: auto; }
+
+header > #audioButton { display:flex!important; align-items:center; justify-content:center; flex:0 0 auto; order:2; min-width:36px; min-height:44px; padding:0 6px; }
+#audioButton svg { width:24px; height:24px; }
+.audio-settings { display:grid; gap:16px; padding:16px 0; }
+.audio-settings label { display:flex; justify-content:space-between; }
+.audio-settings input[type="range"] { width:100%; padding:0; cursor:pointer; }
+@media (orientation: landscape), (min-width:601px) and (pointer:fine) { header > #audioButton { min-width:9.23cqw; height:11.282cqw; } #audioButton svg { width:6.15cqw; height:6.15cqw; } }

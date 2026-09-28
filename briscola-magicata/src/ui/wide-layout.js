@@ -7,6 +7,7 @@ export function installWideLayoutSizing(element, viewport = window) {
     const nextPhysicalWidth = width * (viewport.devicePixelRatio || 1);
     if (!physicalWidth || Math.abs(nextPhysicalWidth - physicalWidth) > 8) {
       element.style.setProperty('--wide-layout-width', `${width * .75}px`);
+      element.ownerDocument?.documentElement.style.setProperty('--desktop-dialog-width', `${Math.max(600,width*.7)}px`);
       physicalWidth = nextPhysicalWidth;
     }
   };

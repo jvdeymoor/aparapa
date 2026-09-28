@@ -4,15 +4,18 @@ import {spriteStyle} from '../data/art.js';
 import {cardName} from './card-details.js';
 // IDs are authoritative; repeated polls and unrelated redraws cannot replay cards.
 export class OpponentPresenter {
- constructor(onIdle,animate=animateCard){this.onIdle=onIdle;this.animate=animate;this.queue=[];this.busy=false;this.generation=0;this.controller=null}
+ constructor(onIdle,animate=animateCard,hooks=null){this.hooks=hooks;this.onIdle=onIdle;this.animate=animate;this.queue=[];this.busy=false;this.generation=0;this.controller=null}
  observe(state,localPlayer){
-  if(this.gameId!==state.gameId){this.reset();this.gameId=state.gameId;this.seen=state.nextPresentationId||0;return}
-  for(const event of state.presentationEvents||[]){if(event.id<=this.seen)continue;this.seen=event.id;if(event.player!==localPlayer&&byId(event.cardId)&&state.phase!=='preparation')this.queue.push(event)}
+  if(this.gameId!==state.gameId){this.reset();this.gameId=state.gameId;this.seen=state.nextPresentationId||0;this.seenDamage=state.nextVisualId||0;return}
+  const jobs=[];
+  for(const event of state.presentationEvents||[]){if(event.id<=this.seen)continue;this.seen=event.id;const own=event.player===localPlayer||state.phase==='preparation';if(this.hooks||(!own&&byId(event.cardId)))jobs.push({event,own,order:event.id,type:'card'})}
+  if(this.hooks)for(const event of state.visualEvents||[]){if(event.id<=this.seenDamage)continue;this.seenDamage=event.id;jobs.push({event,order:event.afterPresentationId??state.nextPresentationId??0,type:'damage'})}
+  jobs.sort((a,b)=>a.order-b.order||(a.type===b.type? a.event.id-b.event.id:a.type==='card'?-1:1));this.queue.push(...jobs);
   if(!this.busy&&this.queue.length){this.busy=true;void this.drain(this.generation)}
  }
  reset(){this.generation++;this.controller?.abort();this.queue=[];this.busy=false}
  async drain(generation){
-  while(this.queue.length&&generation===this.generation){const event=this.queue.shift();this.controller=new AbortController();try{await this.animate(event,this.controller.signal)}catch(error){if(error.name!=='AbortError')console.warn('Animazione carta:',error)}}
+  while(this.queue.length&&generation===this.generation){const event=this.queue.shift();this.controller=new AbortController();try{await (event.type==='damage'?this.hooks.damage(event.event,this.controller.signal):event.own?this.hooks.local(event.event,this.controller.signal):this.animate(event.event,this.controller.signal))}catch(error){if(error.name!=='AbortError')console.warn('Animazione carta:',error)}}
   if(generation===this.generation){this.busy=false;this.controller=null;this.onIdle()}
  }
 }
@@ -38,7 +41,8 @@ async function animateCard(event,signal){
   await run(layer,[{transform:`${offset(from)} scale(.55)`,opacity:1},{transform:'translate(0,0) scale(1)',opacity:1}],{duration:800,easing:'ease-out'});
   if(event.kind!=='attack')await run(inner,[{transform:'rotateY(0deg)'},{transform:'rotateY(180deg)'}],{duration:500,easing:'ease-in-out'});
   await run(layer,[{opacity:1},{opacity:1}],{duration:event.kind==='attack'?1200:1800});
-  if(!signal.aborted)void gameAudio.play(actionSound(event));
+  const sound=signal.aborted?Promise.resolve():gameAudio.play(actionSound(event),{wait:true});
   await run(layer,event.kind==='attack'?[{opacity:1},{opacity:0}]:[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`${offset(to)} scale(.05)`,opacity:0}],{duration:event.kind==='attack'?600:800,easing:'ease-in'});
+  await sound;
  }finally{signal.removeEventListener('abort',abort);layer.remove()}
 }

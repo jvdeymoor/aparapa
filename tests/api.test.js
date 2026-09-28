@@ -5,6 +5,7 @@ import {availableActions} from '../src/game/engine.js';
 const base=process.env.TEST_API_URL||'http://127.0.0.1:3011';
 const C={RULES:{MOVES_PER_TURN:2}};
 const health=await fetch(base+'/api/health').then(response=>response.json());assert.equal(health.ok,true);assert(health.commit===null||/^[a-f0-9]{40}$/.test(health.commit));
+for(const [file,mime] of [['ostLoop.mp3','audio/mpeg'],['carta.wav','audio/wav']]){const response=await fetch(base+'/assets/audio/samples/'+file);assert.equal(response.status,200);assert(response.headers.get('content-type').includes(mime));}
 async function request(path,session,body){const response=await fetch(base+path,{method:body?'POST':'GET',headers:{'content-type':'application/json',...(session?{authorization:`Bearer ${session.accessToken}`}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json()}}
 const first=(await request('/api/games',null,{deckCounts:DEFAULT_DECK_COUNTS})).data;
 const route=`/api/games/${first.code}`;

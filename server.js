@@ -32,7 +32,7 @@ function publicState(game, player) {
   state.players.forEach((p, index) => { if (index !== player) { p.hand = p.hand.map(() => 'hidden'); if(p.openingHand)p.openingHand=p.openingHand.map(()=>'hidden'); p.deck = Array(p.deck.length).fill('hidden'); } });
   return { code:game.code, joined:!!game.tokens[1], player, state };
 }
-const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.svg':'image/svg+xml', '.glb':'model/gltf-binary' };
+const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.mp3':'audio/mpeg', '.wav':'audio/wav', '.png':'image/png', '.svg':'image/svg+xml', '.glb':'model/gltf-binary' };
 async function staticFile(req, res) {
   const path = normalize(join(process.cwd(), decodeURIComponent(new URL(req.url, 'http://local').pathname === '/' ? '/index.html' : new URL(req.url, 'http://local').pathname)));
   if (!path.startsWith(process.cwd())) return json(res, 403, { error:'Percorso non consentito' });

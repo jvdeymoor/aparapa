@@ -2,7 +2,7 @@ import {byId} from '../data/cards.js';
 
 // Replace these files in assets/audio/samples/, keeping their names.
 export const AUDIO_FILES={music:'ostLoop.mp3',magic:'magicata.wav',touch:'touch.wav',confirm:'conferma.wav',close:'chiudi.wav',card:'carta.wav',drone:'drone.wav',virus:'virus.wav',radiation:'radioattivo.wav',laser:'laser.wav',shield:'scudo.wav',attackDrone:'attacco_drone.wav',attackVirus:'attacco_virus.wav',attackRadiation:'attacco_radioattivo.wav'};
-export const AUDIO_LEVELS={music:.15,effects:.5};
+export const AUDIO_LEVELS={music:.15,effects:.25};
 const base=new URL('../../assets/audio/samples/',import.meta.url);
 // Active-sample RMS matching, peak-limited to avoid clipping and excessive boosts.
 export function effectGain(buffer){let sum=0,count=0,peak=0;for(let c=0;c<buffer.numberOfChannels;c++)for(const value of buffer.getChannelData(c)){const level=Math.abs(value);peak=Math.max(peak,level);if(level>.003){sum+=value*value;count++}}return count?Math.min(4,.16/Math.sqrt(sum/count),.95/peak):1}

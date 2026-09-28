@@ -32,6 +32,9 @@ try{
  const secondView=(await request(route,second)).data.state;
  assert(secondView.players[0].hand.every(id=>id==='hidden'));
  assert.equal(secondView.turnId,state.turnId);
+ assert(secondView.presentationEvents.length>0);
+ for(const event of secondView.presentationEvents)assert(secondView.players[event.player].discard.includes(event.cardId),'only already played cards may be revealed');
+ for(const event of secondView.damageHistory||[])assert(event.at&&event.turnId&&event.amount>=0);
  for(const asset of ['/assets/images/cards/sprite-sheet.png','/vendor/GLTFLoader.js','/assets/models/orbital/drone_01.glb'])assert.equal((await fetch(base+asset)).status,200);
 }finally{assert.equal((await request(route+'/leave',first,{})).status,200);assert.equal((await request(route,first)).status,410)}
 console.log('api: room, preparation privacy, concurrent opening actions/readiness, automatic turn, assets and leave: ok');

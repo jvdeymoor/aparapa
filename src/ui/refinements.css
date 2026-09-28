@@ -363,3 +363,38 @@ header nav #onlineButton { position: static !important; width: 100% !important; 
   #app { width: var(--wide-layout-width,75%); max-width: none; }
   #arenaView canvas { touch-action: pinch-zoom !important; }
 }
+
+/* v1.5: card information and controls reuse existing layout bands. */
+.control-icon { display: inline-block; width: 1em; height: 1em; vertical-align: -.15em; pointer-events: none; }
+header > #damageButton { flex: 0 0 auto; order: 2; min-width: 44px; min-height: 44px; padding: 0 9px; font-size: 28px; line-height: 1; }
+header > #rulesButton, header > #menuButton { order: 2; }
+#modalRoot #lobbyRules .control-icon { width: 28px; height: 28px; }
+#hand .card > .card-stats, #modalRoot .preparation-card > .card-stats, .manual-card > .card-stats { position: absolute; top: 5px; left: 5px; display: flex; flex-direction: column; gap: 0; line-height: 1.05; padding: 2px; color: white; background: #050817bb; z-index: 1; }
+.card .card-stats > span, .manual-card .card-stats > span { display: flex; align-items: center; position: static; padding: 0; line-height: 1.05; white-space: nowrap; font-size: inherit !important; }
+#hand .card .card-energy, .preparation-card .card-energy { display: flex; align-items: center; gap: 0; }
+#hand .card > .card-name, #modalRoot .preparation-card > .card-name, .manual-card > .card-name { position: absolute; left: 4px; right: 4px; bottom: 5px; width: auto; height: 14%; margin: 0; padding: 2px; white-space: nowrap; overflow: hidden; background: #050817bb; }
+.card-name svg { display: block; width: 100%; height: 100%; fill: #e8f3ff; }
+.card-facts { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 8px; }
+.card-facts li { display: flex; align-items: center; gap: 7px; padding: 7px; background: #05081799; }
+.card-facts li .game-icon { flex: none; width: 1.5em !important; height: 1.5em !important; }
+.card-facts li span { font: inherit; }
+.deck-entries { display: grid; gap: 5px; }
+.deck-entries button { text-align: left; min-height: 44px; display: flex; align-items: center; gap: 8px; }
+#modalRoot .damage-entry { width: 100%; max-height: none; padding: 10px 0; margin: 0; border: 0; border-bottom: 1px solid #375783; background: transparent; }
+.damage-entry p { margin: 0 0 6px; line-height: 1.5; }
+.damage-entry small { color: #b9cae3; }
+#modalRoot .illustrated-manual { font-size: 16px !important; }
+#modalRoot .illustrated-manual p, #modalRoot .illustrated-manual li { font-size: 16px !important; line-height: 1.45 !important; }
+#modalRoot .illustrated-manual h2 { font-size: 24px !important; }
+#modalRoot .illustrated-manual h3 { font-size: 19px !important; color: #ffca67; }
+.manual-example { display: grid; grid-template-columns: minmax(80px,120px) minmax(0,1fr); gap: 12px; margin: 18px 0; align-items: start; }
+.manual-card { position: relative; aspect-ratio: 120 / 187; border: 1px solid #5781c6; border-radius: 4px; overflow: hidden; }
+.manual-card .example-energy { position: absolute; top: 5px; right: 5px; background: #050817bb; color: white; font-style: normal; }
+.opponent-reveal { position: fixed; z-index: 150; pointer-events: none; perspective: 1000px; }
+.reveal-card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
+.reveal-face { position: absolute; inset: 0; backface-visibility: hidden; border: 2px solid #9dbaff; border-radius: 6px; box-shadow: 0 10px 35px #000a; }
+.reveal-front { transform: rotateY(180deg); }
+.reveal-front .card-name { position: absolute; left: 5px; right: 5px; bottom: 5px; height: 14%; background: #050817cc; }
+@media (orientation: landscape), (min-width: 601px) and (pointer: fine) {
+ header > #damageButton { min-width: 9.23cqw; height: 11.282cqw; min-height: 11.282cqw; font-size: 7.692cqw; }
+}

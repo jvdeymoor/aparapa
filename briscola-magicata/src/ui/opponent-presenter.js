@@ -33,9 +33,9 @@ async function animateCard(event,signal){
  const offset=p=>`translate(${p.x-center.x}px,${p.y-center.y}px)`;
  try{
   inner.style.transform=event.kind==='attack'?'rotateY(180deg)':'rotateY(0deg)';
-  await run(layer,[{transform:`${offset(from)} scale(.55)`,opacity:1},{transform:'translate(0,0) scale(1)',opacity:1}],{duration:400,easing:'ease-out'});
-  if(event.kind!=='attack')await run(inner,[{transform:'rotateY(0deg)'},{transform:'rotateY(180deg)'}],{duration:260,easing:'ease-in-out'});
-  await run(layer,[{opacity:1},{opacity:1}],{duration:event.kind==='attack'?200:300});
-  await run(layer,event.kind==='attack'?[{opacity:1},{opacity:0}]:[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`${offset(to)} scale(.05)`,opacity:0}],{duration:event.kind==='attack'?300:420,easing:'ease-in'});
+  await run(layer,[{transform:`${offset(from)} scale(.55)`,opacity:1},{transform:'translate(0,0) scale(1)',opacity:1}],{duration:800,easing:'ease-out'});
+  if(event.kind!=='attack')await run(inner,[{transform:'rotateY(0deg)'},{transform:'rotateY(180deg)'}],{duration:500,easing:'ease-in-out'});
+  await run(layer,[{opacity:1},{opacity:1}],{duration:event.kind==='attack'?1200:1800});
+  await run(layer,event.kind==='attack'?[{opacity:1},{opacity:0}]:[{transform:'translate(0,0) scale(1)',opacity:1},{transform:`${offset(to)} scale(.05)`,opacity:0}],{duration:event.kind==='attack'?600:800,easing:'ease-in'});
  }finally{signal.removeEventListener('abort',abort);layer.remove()}
 }
